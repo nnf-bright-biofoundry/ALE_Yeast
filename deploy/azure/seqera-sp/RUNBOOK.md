@@ -1850,6 +1850,7 @@ limit. The user chose public access as the lowest-maintenance option.
 - `CLAUDE.md` (Cloud execution, the PAT sentence and the SessionStart-hook dates) and the roadmap's
   keep-or-drop item updated to the decision.
 - Credential deleted from the workspace by the user the same day; two Azure credentials remain
-  (read back), and the token revoked at GitHub. **Pending:** render the launch form once in a browser
-  to see it unauthenticated. The repo-transfer TODO carries it.
+  (read back), and the token revoked at GitHub. The launch form was opened in a browser the same
+  evening and renders normally with no GitHub credential in the workspace (anonymous GitHub API).
+  Nothing of the transfer is pending on the Platform side.
 
