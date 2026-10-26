@@ -1023,11 +1023,30 @@ by the 3-tier method in `output_comparison.md` §3:
 The 4-sample pilot sensitivity re-check runs locally (`output_ottilie_pilot_2026-09-09/`); its result
 goes to `04_validate/`, not here.
 
-## GitHub PAT (fine-grained — current credential)
+## GitHub PAT (retired 2026-10-26: no GitHub credential, the public repo clones anonymously)
 
-| Seqera credential | Provider | Scope | Owner | Created | **Expires** |
+> **Current state (2026-10-26): the workspace needs no GitHub credential.** `nnf-bright-biofoundry/ALE_Yeast`
+> is public (since 2026-09-04), Platform clones a public pipeline over anonymous HTTPS, and a GitHub
+> credential would only raise the launch form's GitHub API rate limit (anonymous: 60 requests per hour
+> per Seqera egress IP, shared). Decided with the repo transfer: the token below is owner-scoped to
+> `Aletechdev`, cannot be re-pointed, and has matched nothing since 2026-10-23; the run of 2026-10-26
+> (`4tiNtBjO5ozg2y`) confirmed launches work without it. Consequences: no entry in
+> `bin/check_credential_expiry.sh`, the 2027-07-24 calendar reminder was cancelled on 2026-10-26, and the
+> org-owned GitHub App item is closed. **If the form ever fails with a GitHub rate-limit error**, the
+> way back is a token whose resource owner is `nnf-bright-biofoundry` (the org must allow fine-grained
+> PATs; deploy keys are disabled there and were never usable for a Platform pipeline anyway), registered
+> with the recipe below and `--base-url https://github.com/nnf-bright-biofoundry/ALE_Yeast`, or an
+> org-owned GitHub App. The credential `github_ALE_Yeast_finegrained` was **deleted from the workspace
+> by the user on 2026-10-26** (read back: two credentials remain, `rgALE_batch_aledev4test` (`azure`,
+> shared key, the older CEs) and `azure_SP_cfb_ale_mutations_pipeline` (`azure_entra`, the `yAMP` CE)).
+> The token itself was revoked at `github.com/settings/tokens` by the user the same day. Nothing remains of it.
+
+The record of the credential as it was in use (2026-08-07 → 2026-10-23), kept for the next person who
+needs to register one:
+
+| Seqera credential | Provider | Scope | Owner | Created | Expires |
 |---|---|---|---|---|---|
-| `github_ALE_Yeast_finegrained` (`2NhER3hJHchursPHekAV1P`) | `github` | **`Contents: Read` on `ALE_Yeast` only**, resource owner `Aletechdev` | **personal** account of the operator — GitHub user `zhliUU`, Seqera user `zhlia` | 2026-08-07 | **2027-08-07** (Sat) |
+| `github_ALE_Yeast_finegrained` (`2NhER3hJHchursPHekAV1P`) | `github` | **`Contents: Read` on `ALE_Yeast` only**, resource owner `Aletechdev` | **personal** account of the operator — GitHub user `zhliUU`, Seqera user `zhlia` | 2026-08-07 | 2027-08-07 (retired 2026-10-26 before expiry) |
 
 **Registered `baseUrl` = `https://github.com/Aletechdev/ALE_Yeast`** — read back from the API, and
 worth recording because it is **repo-level, not org-level**. That is the field Platform matches a
@@ -1038,7 +1057,8 @@ https://github.com/Aletechdev` (org-level) — that is what was typed for the **
 with the org-level form would register a *differently scoped* match than the credential in use, and if
 both existed they would overlap on this repo — exactly the ambiguity warned about below.
 
-> ⏰ **Calendar reminder set for ~2027-07-24** (two weeks before expiry). This is a *shared org
+> ⏰ ~~**Calendar reminder set for ~2027-07-24**~~ (cancelled 2026-10-26, no token to expire). The reasoning
+> stays valid for any future token: this is a *shared org
 > workspace* running on *one person's* personal token: when it lapses, every launch in the workspace
 > fails with the opaque `Unknown pipeline repository or expired Git credentials`, and the person who
 > can fix it may not be the person who hits it. This has already happened once here —
@@ -1114,7 +1134,7 @@ revoke the token** — see the open item below.
       2026-08-07, verified by readback (three credentials remain: `github`, `azure_entra`, `azure`).
       The keypair itself is untouched and stays usable for local/CI clones; only the Platform-side
       registration was removed.
-- [x] ⏰ Calendar reminder for **~2027-07-24** (two weeks before the PAT expires) — **set 2026-08-07**
+- [x] ⏰ ~~Calendar reminder for **~2027-07-24**~~ cancelled 2026-10-26 (no token to expire) — **set 2026-08-07**
       by the operator. ~~2026-10-21~~ — obsolete, that was the classic token's date. ⚠️ The reminder
       lives in *one person's* calendar, which is the same single-point dependency as the token itself;
       it fires two weeks early because re-issuing a fine-grained PAT on an org-owned repo needs a fresh
@@ -1126,7 +1146,9 @@ revoke the token** — see the open item below.
       deliverables), *not* a byte comparison against the months-old local pilot (different tool set,
       older commit — reconciling would cost more than it proves; decided 2026-08-13). Until then the
       pilot's cloud viability rests on `18wEWW90THA2Ek` (310/310, diagnostic).
-- [ ] 🔁 **Swap to an org-owned GitHub App** when an org owner is available — still the durable answer.
+- [x] 🔁 ~~**Swap to an org-owned GitHub App** when an org owner is available~~ **Closed 2026-10-26 by
+      dropping the GitHub credential altogether** (section above; entry of 2026-10-26, later). History:
+      still the durable answer *if* a credential is ever needed again.
       The fine-grained PAT closed the *blast-radius* half of the problem (`Contents: Read` on one repo,
       not `repo` on everything) but **not** the *person-tied* half: a shared org workspace still depends
       on one person's token, now expiring 2027-08-07 instead of 2026-11-04.
@@ -1766,3 +1788,68 @@ redirects the old URL, so the entry kept launching, but `manifest.name` must equ
   resource owner `nnf-bright-biofoundry` (the org must allow fine-grained tokens) and register it with
   `--base-url https://github.com/nnf-bright-biofoundry/ALE_Yeast`. Not launched today; the next launch
   from the entry is the check.
+
+### 2026-10-26: ✅ first launch from the entry after the transfer: run `4tiNtBjO5ozg2y` clones and banners `nnf-bright-biofoundry/ALE_Yeast`
+
+The check the 2026-10-23 entry left open. One QC-only launch from `yAMP`, scripted, nothing typed in
+the form: `./15_launch_run.sh --name yAMP-newhandle-qc-20261026 --set
+outdir=az://aletest/seqera-runs/yAMP-newhandle-qc-20261026`, no `qc_only` override, so the box's
+`true` applied. Platform version `yAMP-ottilie-test-az-4` (the one with the restored engine pin).
+
+- **Timeline.** SUBMITTED 10:15:02 UTC, RUNNING 10:26:27 (cold head pool, 11 min), SUCCEEDED
+  10:36:33; wall 11.32 min, CPU 0.55 h, $0.04. Head task `completed`, exit 0 at 10:36:43, and the head
+  pool was back at 0 nodes a minute later: no hung head job (§15 did not recur). Nextflow 25.10.4.
+- **Identity, every place it shows.** Runs list *Project Name* `nnf-bright-biofoundry/ALE_Yeast`
+  (every earlier row still reads `Aletechdev/ALE_Yeast`); workflow record `repository
+  https://github.com/nnf-bright-biofoundry/ALE_Yeast`, commit `74db1f6`, revision `main`, exit 0.
+  Head log (`GET /workflow/{id}/log`): `Pulling nnf-bright-biofoundry/ALE_Yeast ... downloaded from
+  https://github.com/nnf-bright-biofoundry/ALE_Yeast.git`, the banner `nnf-bright-biofoundry/ALE_Yeast
+  1.0.0`, `projectDir /.nextflow/assets/nnf-bright-biofoundry/ALE_Yeast`, and the completion line
+  `[nnf-bright-biofoundry/ALE_Yeast] Pipeline completed successfully`. `versions.yml` Workflow key
+  `nnf-bright-biofoundry/ALE_Yeast: v1.0.0-g74db1f6` (the third and, with luck, last move of that line;
+  CLAUDE.md → Pipeline Identity). So the clone is anonymous HTTPS of the new URL and needs no
+  credential, as the 2026-10-23 entry expected.
+- **Content, same as 2026-10-05 run 1.** 18 tasks, 0 failed, 0 cached, in the same 15 processes
+  (BUILD_INTERVALS, BWAMEM1_INDEX, CNVKIT_ANTITARGET, CNVKIT_REFERENCE, CREATE_INTERVALS_BED, FASTP ×2,
+  FASTQC ×2, FASTQC_TRIMMED ×2, GATK4_CREATESEQUENCEDICTIONARY, MULTIQC_READ_QC, PREFLIGHT_REFERENCE,
+  PREPARE_GFF3, SAMTOOLS_FAIDX, TABIX_BGZIPTABIX_INTERVAL_COMBINED, TABIX_BGZIPTABIX_INTERVAL_SPLIT).
+  *yAMP input checks*: 6 rows, all OK (Tier-1 recipe 16/16, `--qc_only`, experiment ids, files listed
+  once, ploidy/clonal, FASTA vs GFF3 4/4 contigs). Console: the `[yAMP qc_only]` stop line and the
+  follow-up block naming `-resume e3e2e896-dffe-4214-ae88-6f611830a1dd`.
+- **Outdir** `az://aletest/seqera-runs/yAMP-newhandle-qc-20261026`: 207 blobs, 23.1 MB (multiqc 162,
+  reports 31, pipeline_info 7, reference 3, build 2, preprocessing 1, csv 1);
+  `yAMP-read-QC_multiqc_report.html` 2.7 MB written 10:36:24. Not resumed into a complete run and
+  not compared against a baseline: the question was the URL, and a QC-only run has no deliverable
+  to compare. Resume it with `./15_launch_run.sh --resume 4tiNtBjO5ozg2y --name … --set outdir=<same>`
+  if a complete run on the new handle is ever wanted.
+- **Reading the evidence from this VM.** The user `az login` on the VM had expired (AADSTS70043,
+  14-day refresh-token lifetime under conditional access; last sign-in 2026-10-09), so the blob and
+  Batch reads were done with the service principal, logged in under a throw-away `AZURE_CONFIG_DIR`
+  so the user's session is untouched: `az login --service-principal -u <clientId> -p
+  "$AZURE_CLIENT_SECRET" --tenant <tenantId> --allow-no-subscriptions`; the two ids are in the
+  Platform credential `azure_SP_cfb_ale_mutations_pipeline` (`GET /credentials/{id}` shows them, `tw
+  credentials view` does not). The same SP reads the Batch account (`--account-endpoint
+  https://aledev4test.northeurope.batch.azure.com`). Reminder for `az storage` commands: `az://aletest/…`
+  is the **container** `aletest` of the storage account **`aledata`**, not an account; an account
+  named `aletest` does not resolve (NXDOMAIN).
+- **Observed, not transfer-related, deferred.** The banner's citations block links
+  `https://github.com/nnf-bright-biofoundry/ALE_Yeast/blob/master/CITATIONS.md` (nf-core template
+  text in `nextflow.config` and `utils_nfcore_pipeline/main.nf`; nf-core repos default to `master`).
+  This repo's default branch is `main`, so the link 404s. Roadmap item, not a launch problem.
+
+### 2026-10-26 (later): ✅ decision: no GitHub credential; the PAT entry leaves `check_credential_expiry.sh`
+
+Follow-up to the two entries above. Deploy keys are disabled in the `nnf-bright-biofoundry` org, which
+changes nothing for Platform (HTTPS only, 2026-08-05 entry), and a replacement fine-grained PAT would
+re-create the person-tied yearly rotation for the sole benefit of the launch form's GitHub API rate
+limit. The user chose public access as the lowest-maintenance option.
+
+- `bin/check_credential_expiry.sh`: the `GitHub fine-grained PAT` check removed, a comment in its
+  place; the script now tracks the Azure SP secret (2027-07-31) and the sister-SP secret (2027-08-14)
+  and stays silent. *GitHub PAT* section above rewritten as retired, with the way back.
+- `CLAUDE.md` (Cloud execution, the PAT sentence and the SessionStart-hook dates) and the roadmap's
+  keep-or-drop item updated to the decision.
+- Credential deleted from the workspace by the user the same day; two Azure credentials remain
+  (read back), and the token revoked at GitHub. **Pending:** render the launch form once in a browser
+  to see it unauthenticated. The repo-transfer TODO carries it.
+

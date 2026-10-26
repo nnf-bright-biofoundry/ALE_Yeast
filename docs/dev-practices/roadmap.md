@@ -724,12 +724,16 @@ launch form renders. Mark advanced/Tier-2 params `"hidden": true` (already done 
   note there is no schema key for a collapsed group (nf-schema spec checked 2026-09-10): `hidden: true`
   per param is the only lever, and it also drops the param from plain `--help` (`--help_full` shows it).
   Power users bypass the form anyway via a params file (user page planned: `docs/usage/launch_params_file.md`).
-- **[low] Decide whether the Seqera GitHub credential stays now that the repo is public (checked 2026-10-09).**
+- ~~**[low] Decide whether the Seqera GitHub credential stays now that the repo is public (checked 2026-10-09).**~~
+  **Decided 2026-10-26: dropped.** No GitHub credential; the public repo clones anonymously (verified by
+  run `4tiNtBjO5ozg2y`), the PAT entry left `bin/check_credential_expiry.sh`, the RUNBOOK's *GitHub PAT*
+  section records the way back (an org-owned token or GitHub App) should the launch form ever hit the
+  anonymous rate limit. Deleting the unused workspace credential and revoking the token are tidy-up.
   *2026-10-23, repo transferred to `nnf-bright-biofoundry/ALE_Yeast`:* the credential's `baseUrl` still
   names the old handle, so it matches nothing, and a fine-grained PAT is owner-scoped, so the token
   cannot be re-pointed. The *Drop* case below is in effect; a replacement needs a token whose resource
   owner is the new org (`RUNBOOK.md` 2026-10-23 entry).
-  The fine-grained PAT `github_ALE_Yeast_finegrained` (personal account, expires 2027-08-07; record in
+  The fine-grained PAT `github_ALE_Yeast_finegrained` (personal account, was due to expire 2027-08-07, revoked 2026-10-26; record in
   `deploy/azure/seqera-sp/RUNBOOK.md` → *GitHub PAT*) was needed to clone a *private* repository;
   `nnf-bright-biofoundry/ALE_Yeast` has been public since 2026-09-04. *Measured 2026-10-09:* the unauthenticated
   GitHub API reports `visibility: public` and an anonymous `git ls-remote` lists every branch; Seqera's

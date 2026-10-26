@@ -16,7 +16,7 @@ published to two registries:
 | Role | Image | Visibility |
 |------|-------|------------|
 | **Canonical** (module pin) | `docker.io/aledbucsd/ale-reports:1.0.0` | Public |
-| **Backup / mirror** | `ghcr.io/aletechdev/ale-reports:1.0.0` | Private |
+| **Backup / mirror** | `ghcr.io/nnf-bright-biofoundry/ale-reports` (`main`, `latest`, `sha-74db1f6` since 2026-10-26; the `1.0.0` mirror is still `ghcr.io/aletechdev/ale-reports:1.0.0`, old org) | Private |
 
 ```
 conda 'conda-forge::pandas conda-forge::jinja2'
@@ -66,9 +66,13 @@ self-owned image above. Kept as a fallback recipe:
   Google account **aledbsoftware@gmail.com** (Google SSO). This is the account that owns
   the `ale-reports` repo and issues the `DOCKERHUB_TOKEN` used by CI.
 - **ghcr** (mirror): the GitHub org that owns the repo (`nnf-bright-biofoundry` since the 2026-10-23 transfer; `Aletechdev` before, where the 1.0.0 mirror still sits). CI pushes via the repo's built-in
-  `GITHUB_TOKEN` — the `ALE_Yeast` repo must have Write access to the `ale-reports`
-  package (Package settings → Manage Actions access) since the package was pre-created
-  manually.
+  `GITHUB_TOKEN`. In the old org the package was pre-created by hand and the `ALE_Yeast` repo
+  granted Write (Package settings → Manage Actions access). In the new org the package did not
+  exist after the transfer, and a `workflow_dispatch` of the build on 2026-10-26 (run
+  `40326516830`, commit `74db1f6`) created it on first push with the built-in token alone, so no
+  pre-creation is needed where the org lets members create packages; a package created this way
+  is linked to the repo automatically. The run also refreshed `latest`/`main`/`sha-*` on Docker
+  Hub; `1.0.0` is produced only from a `v*` tag and was untouched.
 
 **GitHub Action (preferred, automated):**
 `.github/workflows/build-generate-index-container.yml` builds the Dockerfile and pushes

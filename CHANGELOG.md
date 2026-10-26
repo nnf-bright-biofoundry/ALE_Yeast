@@ -15,8 +15,11 @@
   git@github.com:nnf-bright-biofoundry/ALE_Yeast.git` is still the right move. Dated records (RUNBOOK
   entries, baseline comparisons, the sarek 3.5.1 benchmark rows) keep the handle that was current when
   they were written. The ghcr mirror of the report image is named after the repo owner by the CI
-  workflow, so the next tag push publishes to `ghcr.io/nnf-bright-biofoundry/ale-reports` and needs that
-  org's package permissions; the Docker Hub image the pipeline pins is unaffected.
+  workflow: a manual build on 2026-10-26 created `ghcr.io/nnf-bright-biofoundry/ale-reports` on first
+  push with the repo's built-in token, no package set-up needed; the `1.0.0` mirror and the Docker Hub
+  image the pipeline pins are unaffected. The Seqera workspace holds no GitHub credential since
+  2026-10-26: the public repo clones anonymously (verified by a Platform run), and the expiry hook no
+  longer tracks a token (`deploy/azure/seqera-sp/RUNBOOK.md`, *GitHub PAT*).
 
 - **Git history rewritten (2026-08-31)** with `git filter-repo` to purge private experiment data
   before open-sourcing. Every commit SHA changed; SHAs recorded before this date refer to the

@@ -169,4 +169,5 @@ and per-tool investigation notes under `archive/cnvkit/` and `archive/igvreports
 
 yAMP is a fork of [nf-core/sarek](https://nf-co.re/sarek) 3.5.1; all upstream credits and tool
 citations are retained in [`../CITATIONS.md`](../CITATIONS.md). ALE-specific development is by the
-Aletech team (https://github.com/nnf-bright-biofoundry/ALE_Yeast).
+Aletech team (https://github.com/Aletechdev); the pipeline is maintained at
+https://github.com/nnf-bright-biofoundry/ALE_Yeast.

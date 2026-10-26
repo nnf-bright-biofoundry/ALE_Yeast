@@ -31,9 +31,9 @@ check "Azure SP client secret (sp-bright-recon-ale-mutations-pipeline-seqera-dep
       "2027-07-31" 60 \
       "mint a new secret with deploy/azure/seqera-sp/03_create_secret.sh (operator terminal ONLY — it prints the secret), update the Seqera credential and ~/.config/ale-seqera/sp.env, then delete the old keyId. Expired = opaque auth error at launch."
 
-check "GitHub fine-grained PAT (github_ALE_Yeast_finegrained)" \
-      "2027-08-07" 60 \
-      "re-issue at github.com/settings/tokens and swap into the Seqera credential; org-owner re-approval takes ~1 day, so start early. Expired = Seqera cannot clone the pipeline repo."
+# No GitHub credential is tracked since 2026-10-26: the repository is public and Platform clones it
+# anonymously over HTTPS; the fine-grained PAT (would have expired 2027-08-07) was retired with the transfer to
+# nnf-bright-biofoundry (RUNBOOK → GitHub PAT). Add an entry here again if a token is ever registered.
 
 check "Sister-SP secret 'rotated-2026-08' (sp-bright-recon-ale-mutations-pipeline — the ALE-mutations service, not Seqera)" \
       "2027-08-14" 60 \
