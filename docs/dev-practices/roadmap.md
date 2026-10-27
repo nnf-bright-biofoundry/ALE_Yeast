@@ -398,6 +398,34 @@ Full project history lives in `git log` and `CHANGELOG.md`; resolved items are s
   lint currently aborts on `split_fastq` because of an nf-core/tools bug, not a schema defect — see the
   `split_fastq` item under *Deployment — Seqera launch UI / schema* (report upstream first; the overlay
   workaround there is the fallback if the fix has not shipped by the time CI needs the gate).
+- **[med] Lint checks like upstream's, measured on the committed tree 2026-10-23 (nothing wired yet).**
+  The fork ships none of upstream's lint files (no `.pre-commit-config.yaml`, `.editorconfig`,
+  `.prettierrc.yml`, `.prettierignore`; `.nf-core.yml` is one line). Upstream 3.5.1 runs prettier 3.2.5
+  and editorconfig-checker; 3.10.0 adds the pre-commit-hooks set (trailing whitespace, final newline,
+  large files, merge markers), `nextflow lint` via `seqeralabs/nf-lint-pre-commit` and a local
+  outdir-blocking hook, with a `prek`/pre-commit job and an nf-core lint job in CI. What each would say
+  about this tree today, *measured* with upstream's config on a clean clone:
+  - prettier: 134 files would change, 112 of them under `docs/`.
+  - editorconfig-checker: 994 errors in 182 files (247 trailing whitespace, 177 line ending / final
+    newline), 129 of the files under `docs/`; 66 CRLF files, 65 of them in `docs/`.
+  - `nextflow lint` 25.10.4 on `main.nf`, `workflows/`, `subworkflows/local/`, `modules/local/`:
+    357 errors, 257 in subworkflows and mostly inherited (`X is already declared`, `def` in closures);
+    it crashes on a null `ConfigStatement` when `conf/` + `nextflow.config` are included, and no
+    single file reproduces that.
+  - `nf-core pipelines lint` (tools 3.5.1): aborts on `split_fastq` exactly as the item above says.
+    With the overlay workaround in a scratch clone: 216 pass / 10 warn / 146 fail at pipeline level.
+    Fails: `template_strings` 104 (every `{{ }}` in `docs/igvreports/templates/index.html.j2` plus two
+    docker `{{.Repository}}` lines; upstream disables this test), `files_exist` 22 (nf-core template
+    files), `nf_test_content` 14 (module tests lack `outdir = "$outputDir"` and a `versions.yml`
+    snapshot), `nextflow_config` 4 (manifest not `nf-core/`, `custom_config_base`), `multiqc_config` 1,
+    `modules_config` 1. Module-level lint not measured (dirty `~/.config/nfcore/nf-core/modules` cache;
+    rerun with `XDG_CONFIG_HOME` pointed at a fresh dir). Never lint inside the dev checkout: it walks
+    the gitignored work and output dirs and hangs for 10+ min in `pipeline_if_empty_null`.
+  Order of value: (1) the Launchpad params-box drift check (no secrets; see the Seqera automation item
+  under *Deployment*) and editorconfig + prettier on `docs/` after a one-off reformat commit; (2)
+  `nextflow lint` only once the inherited errors are triaged against upstream; (3) nf-core lint needs the
+  `split_fastq` overlay and a `.nf-core.yml` lint block disabling `template_strings`, the template
+  `files_exist` entries and the nf-core-only `nextflow_config` checks before it can gate anything.
 - **[med] CI shape: which test layer runs where, and what each reads (decided 2026-10-19, not built).**
   Settled while making the `VARIANTFILTRATION_FALLBACK` test self-contained (`d60829f`: the test set's
   reference committed bgzipped under `tests/fixtures/reference/`, 1.2 MB, so a module test no longer
@@ -750,6 +778,23 @@ launch form renders. Mark advanced/Tier-2 params `"hidden": true` (already done 
   credential in the workspace, render the form, run one QC-only launch, then update
   `bin/check_credential_expiry.sh`, `CLAUDE.md` (Cloud execution) and the RUNBOOK's *GitHub PAT* section;
   the org-owned GitHub App open item closes with it.
+- **[med] Automate the Seqera deploy scripts (`14_register_pipeline.sh --update`, `15_launch_run.sh`,
+  `16_watch_run.sh`) with GitHub Actions. Assessed 2026-10-23, nothing built.** Three jobs by risk:
+  (1) a PR check that the committed params box and schema match what the `yAMP` entry serves (no
+  secrets; the drift check `14` already does by hand); (2) `14 --update` on every push to `main`, in a
+  concurrency group so two pushes cannot race; (3) launch + watch behind a GitHub Environment on a tag
+  or manual dispatch, with a per-run `outdir` and `16`'s exit 2 read as inconclusive, not failed. Gaps
+  found: the Seqera token is a personal *Your tokens* token, so CI needs a service account or machine
+  user with Maintain on `DTU-Biosustain/RECON-ALE`, recorded in the RUNBOOK and in
+  `bin/check_credential_expiry.sh`; the Azure SP secret is NOT needed for register / update / launch /
+  watch (only `17_download_outdir.sh` and `00_vars.sh` read it), so if CI must download outputs use an
+  OIDC federated credential on the existing app registration (needs an app owner) rather than the
+  secret; the scripts must skip the `origin/main..main` and uncommitted-conf checks when
+  `GITHUB_ACTIONS` is set and take the revision explicitly, `14 --update` must be allowed to set
+  `revision` (the keep-list sends it back unchanged today), and `14`'s no-flag register mode (deletes
+  the entry, new id) must refuse to run under CI. Runner toolchain: `tw` 0.38.0 pinned, Nextflow 25.10.4
+  + Java 17 (the drift check runs `nextflow config`), Python + PyYAML. Verify first that the Docker Hub
+  secrets survived the 2026-10-23 repo transfer (checked via `gh` 2026-10-26: present).
 - **[post-1.0.0] Cherry-pick `worktree-seqera-cloud` into `main`** once the Seqera cloud run is
   validated. Not a strict/clean merge — cherry-pick the cloud-specific changes as needed. The branch
   lives on `nnf-bright-biofoundry/ALE_Yeast`; don't merge before cloud validation (avoids pulling unvalidated
