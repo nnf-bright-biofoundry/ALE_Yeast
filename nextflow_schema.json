@@ -9,7 +9,7 @@
             "title": "Input/output options",
             "type": "object",
             "fa_icon": "fas fa-terminal",
-            "description": "Where the run reads its samplesheet and writes its results.\n\n⚠️ Azure: the Browse button inserts `az://<account>.<container>/…`. Delete `<account>.` or the run fails at start-up.",
+            "description": "Where the run reads its samplesheet and writes its results.",
             "required": [
                 "step",
                 "outdir"
@@ -17,7 +17,7 @@
             "properties": {
                 "input": {
                     "description": "Path to comma-separated file containing information about the samples in the experiment. On Azure: az://<container>/…, without the account name.",
-                    "help_text": "A design file with information about the samples in your experiment. Use this parameter to specify the location of the input files. It has to be a comma-separated file with a header row. See [usage docs](https://nf-co.re/sarek/usage#input).\n\nIf no input file is specified, sarek will attempt to locate one in the `{outdir}` directory. If no input should be supplied, i.e. when --step is supplied or --build_only_index, then set --input false\n\nAzure: a path picked with Seqera Platform's file browser reads `az://<account>.<container>/…`. Nextflow takes `<account>.<container>` as the container name and the run stops at start-up with `Status code 400, InvalidResourceName` ([nextflow#4683](https://github.com/nextflow-io/nextflow/issues/4683)). Remove `<account>.`; this applies to every path field.",
+                    "help_text": "A design file with information about the samples in your experiment. Use this parameter to specify the location of the input files. It has to be a comma-separated file with a header row. See [usage docs](https://nf-co.re/sarek/usage#input).\n\nIf no input file is specified, sarek will attempt to locate one in the `{outdir}` directory. If no input should be supplied, i.e. when --step is supplied or --build_only_index, then set --input false\n\nAzure paths read `az://<container>/…`: the storage account comes from the compute environment's credential, not from the path. A path written as `az://<account>.<container>/…` stops the run at start-up ([nextflow#4683](https://github.com/nextflow-io/nextflow/issues/4683)).",
                     "fa_icon": "fas fa-file-csv",
                     "type": "string",
                     "format": "file-path",
@@ -28,7 +28,7 @@
                     "allOf": [
                         {
                             "pattern": "^(?!az://[^/]*\\.)",
-                            "errorMessage": "Azure paths read az://<container>/..., without the storage account name: remove '<account>.' from a path picked with the Browse button."
+                            "errorMessage": "Azure paths read az://<container>/..., without the storage account name: remove '<account>.' (the account comes from the compute environment's credential)."
                         }
                     ]
                 },
@@ -67,7 +67,7 @@
                     "allOf": [
                         {
                             "pattern": "^(?!az://[^/]*\\.)",
-                            "errorMessage": "Azure paths read az://<container>/..., without the storage account name: remove '<account>.' from a path picked with the Browse button."
+                            "errorMessage": "Azure paths read az://<container>/..., without the storage account name: remove '<account>.' (the account comes from the compute environment's credential)."
                         }
                     ]
                 }
@@ -77,7 +77,7 @@
             "title": "Reference genome options",
             "type": "object",
             "fa_icon": "fas fa-dna",
-            "description": "Reference genome files of the run.\n\n⚠️ Azure: the Browse button inserts `az://<account>.<container>/…`. Delete `<account>.` or the run fails at start-up.",
+            "description": "Reference genome files of the run.",
             "properties": {
                 "genome": {
                     "type": "string",
@@ -192,7 +192,7 @@
                     "allOf": [
                         {
                             "pattern": "^(?!az://[^/]*\\.)",
-                            "errorMessage": "Azure paths read az://<container>/..., without the storage account name: remove '<account>.' from a path picked with the Browse button."
+                            "errorMessage": "Azure paths read az://<container>/..., without the storage account name: remove '<account>.' (the account comes from the compute environment's credential)."
                         }
                     ]
                 },
@@ -317,7 +317,7 @@
                     "allOf": [
                         {
                             "pattern": "^(?!az://[^/]*\\.)",
-                            "errorMessage": "Azure paths read az://<container>/..., without the storage account name: remove '<account>.' from a path picked with the Browse button."
+                            "errorMessage": "Azure paths read az://<container>/..., without the storage account name: remove '<account>.' (the account comes from the compute environment's credential)."
                         }
                     ]
                 },
@@ -374,7 +374,7 @@
                     "allOf": [
                         {
                             "pattern": "^(?!az://[^/]*\\.)",
-                            "errorMessage": "Azure paths read az://<container>/..., without the storage account name: remove '<account>.' from a path picked with the Browse button."
+                            "errorMessage": "Azure paths read az://<container>/..., without the storage account name: remove '<account>.' (the account comes from the compute environment's credential)."
                         }
                     ],
                     "pattern": "^\\S+\\.gff3?$",

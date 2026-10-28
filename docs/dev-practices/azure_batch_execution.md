@@ -1113,13 +1113,24 @@ the account name ([#4692](https://github.com/nextflow-io/nextflow/pull/4692)) wa
 [#4445](https://github.com/nextflow-io/nextflow/issues/4445) (multiple storage accounts, open).
 Seqera's docs show both forms on separate pages and do not mention the mismatch.
 
-**What to do.** After picking a file or folder with the browser, delete `<account>.` so the path
-reads `az://<container>/…`. This applies to every path field (`input`, `outdir`, `fasta`,
-`snpeff_cache`, `report_gff3`). The launch form says so since 2026-10-02: a warning in the
+**Fixed on the Platform side (2026-10-06).** Seqera changed the launch form's picker, not Nextflow.
+The Seqera Enterprise v26.2 changelog (dated 2026-10-02) reads: *"Fixed a path picked from an Azure
+data link in the launch form, for the output directory or a path parameter, including the storage
+account (`az://<account>.<container>/…`), which Nextflow cannot resolve. The picker now inserts
+`az://<container>/…`, and on an Azure compute environment it disables data links whose credentials
+differ from the compute environment's."* Seqera Cloud shipped it in v27.1.0_cycle75 (2026-10-06;
+that changelog names only the output directory). Data Explorer still registers the containers as
+`az://aledata.<container>` (`GET /data-links`, read 2026-10-28); the conversion happens in the form.
+Nextflow is unchanged: #4683 is still open (its last comment, ours of 2026-10-02, has no reply) and
+a hand-typed or copied account-prefixed path still fails exactly as below.
+
+**What to do.** Write `az://<container>/…`. Until the fix the recipe was: after picking a file or
+folder with the browser, delete `<account>.`; this applied to every path field (`input`, `outdir`,
+`fasta`, `snpeff_cache`, `report_gff3`). From 2026-10-02 to 2026-10-28 the launch form said so in the
 descriptions of the *Input/output options* and *Reference genome options* sections and under the
-`input` field (`conf/schema_overlay.yml`). The form cannot do more than warn: the one schema rule it
-checks is also the file browser's filter, so a rule against the account name disables the browser
-for every Azure file (§20).
+`input` field (`conf/schema_overlay.yml`); those warnings were removed once the picker was fixed. The
+form could not do more than warn: the one schema rule it checks is also the file browser's filter,
+so a rule against the account name disables the browser for every Azure file (§20).
 
 **At start-up (since 2026-10-04).** The five path parameters carry the rule where only parameter
 validation reads it: an `allOf` subschema with the pattern `^(?!az://[^/]*\.)` and an `errorMessage`
@@ -1129,7 +1140,7 @@ service-principal credential on 2026-10-04, on the change that introduced it:
 
 | Account-prefixed value in | The run stops with |
 |---|---|
-| `fasta`, `snpeff_cache` | `* --fasta (az://aledata.aletest/…): "az://aledata.aletest/…" does not match regular expression [^(?!az://[^/]*\.)] (Azure paths read az://<container>/..., without the storage account name: remove '<account>.' from a path picked with the Browse button.)` |
+| `fasta`, `snpeff_cache` | `* --fasta (az://aledata.aletest/…): "az://aledata.aletest/…" does not match regular expression [^(?!az://[^/]*\.)] (Azure paths read az://<container>/..., without the storage account name: remove '<account>.' from a path picked with the Browse button.)` (the message's tail reads "(the account comes from the compute environment's credential)" since 2026-10-28; the rule is unchanged) |
 | `report_gff3` | the same message under `--report_gff3`; *measured* 2026-10-05, a `-preview` start-up of the same kind (the paired start-up with the valid path passed) |
 | `input` | the bare `Status code 400, InvalidResourceName`, as before. nf-schema's samplesheet check (`SchemaEvaluator`) asks Azure whether the file exists, and the exception leaves validation before any error is listed |
 | `outdir` | the bare 400, as before. The nf-prov plugin (`ProvHelper.checkFileOverwrite`) reads the output path when the session starts, before the pipeline script |

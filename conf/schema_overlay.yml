@@ -86,15 +86,15 @@ group_order:
 
 # Group title/description the fork owns (merged into the group entry).
 group_overrides:
-  # The two groups whose fields have a Browse button. Platform's file browser inserts Azure paths in
-  # its own `az://<account>.<container>/` notation, which Nextflow reads as a container name and
-  # Azure rejects (run 5syUy3CSjd3kyO, 2026-10-01: `Status code 400, InvalidResourceName` before any
-  # task; nextflow-io/nextflow#4683, open since 2024). Same sentence in both, and on `input` below.
-  # The warning is its own paragraph (blank line before it; section descriptions render Markdown).
+  # The two groups whose fields have a Browse button. From 2026-10-02 to 2026-10-28 both carried a
+  # warning that the file browser inserts `az://<account>.<container>/…`, which Nextflow cannot read
+  # (run 5syUy3CSjd3kyO; nextflow-io/nextflow#4683). Seqera fixed the picker itself (Enterprise
+  # v26.2, Cloud v27.1.0_cycle75, 2026-10-06): it now inserts `az://<container>/…`. The warning is
+  # gone; the start-up rule below still names a hand-typed account-prefixed path.
   input_output_options:
-    description: "Where the run reads its samplesheet and writes its results.\n\n⚠️ Azure: the Browse button inserts `az://<account>.<container>/…`. Delete `<account>.` or the run fails at start-up."
+    description: "Where the run reads its samplesheet and writes its results."
   reference_genome_options:
-    description: "Reference genome files of the run.\n\n⚠️ Azure: the Browse button inserts `az://<account>.<container>/…`. Delete `<account>.` or the run fails at start-up."
+    description: "Reference genome files of the run."
   # Upstream calls this group "Preprocessing" — next to "Read preprocessing" that reads as a
   # duplicate. Its visible fields are all alignment-output choices (2026-09-09).
   preprocessing:
@@ -171,22 +171,24 @@ property_order:
 #
 # Azure path rule (2026-10-04): the five visible path fields carry one extra subschema under `allOf`
 # whose pattern, `^(?!az://[^/]*\.)`, fails a value whose container part holds a dot
-# (`az://<account>.<container>/...`, what Platform's Browse button inserts; azure_batch_execution.md
-# §19). A dot is not legal in an Azure container name, so no valid path is rejected; s3:// and gs://
-# bucket names may hold dots and are not touched.
+# (`az://<account>.<container>/...`: Data Explorer's notation, which Platform's Browse button
+# inserted unchanged until its fix of 2026-10-06 and which a copied or hand-typed path can still
+# carry; azure_batch_execution.md §19). A dot is not legal in an Azure container name, so no valid
+# path is rejected; s3:// and gs:// bucket names may hold dots and are not touched.
 # Why `allOf` and not the field's own `pattern`: the form's file browser greys out "Select" for every
 # file that fails the field's `pattern`, and it tests its own `az://<account>.<container>/` form, so
 # a rule inside `pattern` made every Azure file unselectable (seen on the preview branch,
 # 2026-10-04). The fields keep upstream's `pattern` untouched. The `errorMessage` sits inside the
 # subschema, so nf-schema appends it to this rule's error only.
 property_overrides:
-  # Upstream text plus the Azure file-browser note (see group_overrides).
+  # Upstream text plus a one-line Azure path format note (the file-browser warning that stood here
+  # until 2026-10-28 is gone, see group_overrides).
   input:
     description: "Path to comma-separated file containing information about the samples in the experiment. On Azure: az://<container>/…, without the account name."
-    help_text: "A design file with information about the samples in your experiment. Use this parameter to specify the location of the input files. It has to be a comma-separated file with a header row. See [usage docs](https://nf-co.re/sarek/usage#input).\n\nIf no input file is specified, sarek will attempt to locate one in the `{outdir}` directory. If no input should be supplied, i.e. when --step is supplied or --build_only_index, then set --input false\n\nAzure: a path picked with Seqera Platform's file browser reads `az://<account>.<container>/…`. Nextflow takes `<account>.<container>` as the container name and the run stops at start-up with `Status code 400, InvalidResourceName` ([nextflow#4683](https://github.com/nextflow-io/nextflow/issues/4683)). Remove `<account>.`; this applies to every path field."
+    help_text: "A design file with information about the samples in your experiment. Use this parameter to specify the location of the input files. It has to be a comma-separated file with a header row. See [usage docs](https://nf-co.re/sarek/usage#input).\n\nIf no input file is specified, sarek will attempt to locate one in the `{outdir}` directory. If no input should be supplied, i.e. when --step is supplied or --build_only_index, then set --input false\n\nAzure paths read `az://<container>/…`: the storage account comes from the compute environment's credential, not from the path. A path written as `az://<account>.<container>/…` stops the run at start-up ([nextflow#4683](https://github.com/nextflow-io/nextflow/issues/4683))."
     allOf: &az_path_rule
       - pattern: "^(?!az://[^/]*\\.)"
-        errorMessage: "Azure paths read az://<container>/..., without the storage account name: remove '<account>.' from a path picked with the Browse button."
+        errorMessage: "Azure paths read az://<container>/..., without the storage account name: remove '<account>.' (the account comes from the compute environment's credential)."
   # Same rule on the other visible path fields (see the comment above property_overrides).
   outdir:
     allOf: *az_path_rule

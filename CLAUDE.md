@@ -166,17 +166,16 @@ pull" inference. That step now runs on the `biocontainers/gatk4:4.5.0.0` image o
 (4th patched nf-core module); the pattern can recur with any large image. Recipe:
 [`azure_batch_execution.md` §18](docs/dev-practices/azure_batch_execution.md#18-a-task-that-is-running-but-has-not-started--its-container-image-is-still-being-pulled-2026-10-01).
 
-📁 **A path picked with the launch form's Browse button must be edited before launching.** Platform's
-file browser inserts Azure paths as `az://<account>.<container>/…`; Nextflow reads `az://<container>/…`
-only, so the run stops at start-up with a bare `Status code 400, InvalidResourceName` (run
-`5syUy3CSjd3kyO`, 2026-10-01). Delete `<account>.`. Not a setting of ours and not credential-dependent:
-nextflow#4683, open since 2024. The launch form carries the warning (two section descriptions and the
-`input` field, `conf/schema_overlay.yml`) **and cannot do more** (measured 2026-10-04): it checks
-only a field's own `pattern`, and its file browser greys out *Select* on every file that fails that
-same pattern, so a rule against the account name disables Browse for every Azure file; `allOf` /
-`anyOf` / `oneOf` / `not` on a parameter are ignored by the form. The rule therefore sits in an
-`allOf` subschema that only start-up validation reads: a readable error for `fasta`, `snpeff_cache`
-and `report_gff3`, while `input` and `outdir` still stop with the bare 400.
+📁 **Azure paths read `az://<container>/…`, never `az://<account>.<container>/…`.** The account comes
+from the compute environment's credential; the account-prefixed form is Data Explorer's notation, and
+Nextflow stops at start-up with a bare `Status code 400, InvalidResourceName` on it (run
+`5syUy3CSjd3kyO`, 2026-10-01; nextflow#4683, still open). **Platform's Browse button used to insert
+that form and no longer does**: Seqera fixed the picker (Enterprise v26.2 / Cloud v27.1.0_cycle75,
+2026-10-06), so the launch-form warnings of 2026-10-02 were removed on 2026-10-28. What stays is the
+start-up rule in an `allOf` subschema (`conf/schema_overlay.yml`): a readable error for a hand-typed or
+copied account-prefixed `fasta`, `snpeff_cache` or `report_gff3`, while `input` and `outdir` still stop
+with the bare 400. The form itself cannot carry such a rule: it checks only a field's own `pattern`,
+which is also its file browser's filter.
 [`azure_batch_execution.md` §19](docs/dev-practices/azure_batch_execution.md#19-a-path-picked-in-platforms-file-browser-stops-the-run-at-start-up-2026-10-01) ·
 what the form reads from the schema, and how to preview a schema change on a branch:
 [§20](docs/dev-practices/azure_batch_execution.md#20-what-the-launch-form-checks-from-the-schema-and-what-it-ignores-2026-10-04).

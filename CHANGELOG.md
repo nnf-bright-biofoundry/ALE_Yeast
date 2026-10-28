@@ -555,6 +555,16 @@
 
 ### Removed
 
+- **The launch form's Azure file-browser warnings** (2026-10-28). The *Input/output options* and
+  *Reference genome options* section descriptions and the `input` help text no longer warn that the
+  Browse button inserts `az://<account>.<container>/…`: Seqera fixed the picker itself (Enterprise
+  v26.2 changelog, Cloud v27.1.0_cycle75 of 2026-10-06), which now inserts `az://<container>/…` and,
+  on an Azure compute environment, disables data links whose credentials differ from the compute
+  environment's. Nextflow is unchanged (nextflow#4683 still open), so the start-up rule of 2026-10-04
+  stays for hand-typed or copied account-prefixed paths; its message no longer names the Browse
+  button. `conf/schema_overlay.yml` → `nextflow_schema.json`;
+  `docs/dev-practices/azure_batch_execution.md` §19.
+
 - **Tier-2 AF post-filters for FreeBayes and Mutect2** (2026-09-09): `subworkflows/local/vcf_filter_freebayes`
   and `vcf_filter_mutect2`, `conf/modules/custom_{freebayes,mutect2}_filter.config`, the never-wired
   `filter_freebayes` / `freebayes_{qual,dp,af}_threshold` / `freebayes_high_impact` params (config + schema),
@@ -641,7 +651,9 @@
   about it in the *Input/output options* and *Reference genome options* section descriptions and under
   `input` (`conf/schema_overlay.yml`). It cannot flag the path itself (§20); since 2026-10-04
   start-up validation names it for the three reference parameters. Detail:
-  `docs/dev-practices/azure_batch_execution.md` §19.
+  `docs/dev-practices/azure_batch_execution.md` §19. **Fixed by Seqera on the Platform side
+  (Cloud v27.1.0_cycle75, 2026-10-06): the picker inserts `az://<container>/…`; the warnings were
+  removed on 2026-10-28 (see *Removed*).**
 
 ## v1.0.0 — first production release (on nf-core/sarek 3.5.1)
 
