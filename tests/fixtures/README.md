@@ -205,3 +205,27 @@ for v in with_codon_table without_codon_table; do
 done
 printf 'S288C_mito.Mito.codonTable : Yeast_Mitochondrial\n' >> $F/with_codon_table/S288C_mito/snpEff.config
 ```
+
+## `genbank/` — GenBank reference route (`tests/genbank_reference.nf.test`, `tests/snpeff_build.nf.test`)
+
+- `mito_ncbi.gbff`: the real `NC_001224` record of NCBI's S288C R64 assembly (`data/ottilie/S288C_reference/
+  S288C_R64.gbff`, cut at its `//`): `VERSION NC_001224.1`, `/organelle="mitochondrion"`, 19 CDS with
+  `/transl_table=3` and `/translation`, 11 of them joined over introns. 176 KB. `mito_ncbi.gbff.gz` is
+  `gzip -k` of it.
+- `mito_draft.gb`: a lab-style copy of the same record made by `make_fixtures.py`: LOCUS `mito_draft`, no
+  ACCESSION, VERSION or DBLINK line, `/chromosome="M"` added to the source feature (snpEff would name the
+  contig `M` without the VERSION rewrite), every `/transl_table` and `/translation` removed (a draft annotated
+  by a gene caller that writes neither).
+- `synthetic_two_records.gb`, `synthetic_duplicate_locus.gb`, `synthetic_mixed_tables.gb`,
+  `synthetic_name_collision.gb`: written by `make_fixtures.py` with BioPython 1.81 from seeded random
+  sequences, so every coordinate in the tests is hand-checkable. `plasmidA` (2,400 bp, `/plasmid`, three CDS
+  on table 11: + strand simple; - strand `join` over a 60-bp intron, parts 199 + 200 bp; + strand with
+  `codon_start=2`) and `chrB` (1,500 bp, `/chromosome="B"`, one CDS without a table); the same plasmid twice;
+  the plasmid with one CDS on table 4; two records `chr1` and `1`, which snpEff stores under one name.
+
+Regenerate everything but `mito_ncbi.gbff` (deterministic, byte-identical on a second run):
+
+```bash
+docker run --rm -u $(id -u):$(id -g) -v $PWD:/r -w /r quay.io/biocontainers/biopython:1.81 \
+    python -I tests/fixtures/genbank/make_fixtures.py tests/fixtures/genbank
+```

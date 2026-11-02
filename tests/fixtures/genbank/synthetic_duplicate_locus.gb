@@ -1,0 +1,164 @@
+LOCUS       plasmidA                2400 bp    DNA     circular SYN 01-JAN-1980
+DEFINITION  synthetic test plasmid.
+ACCESSION   plasmidA
+VERSION     plasmidA
+KEYWORDS    .
+SOURCE      .
+  ORGANISM  .
+            .
+FEATURES             Location/Qualifiers
+     source          1..2400
+                     /organism="synthetic construct"
+                     /mol_type="genomic DNA"
+                     /plasmid="pTest"
+     gene            101..400
+                     /gene="tstA"
+                     /locus_tag="TST_001"
+     CDS             101..400
+                     /gene="tstA"
+                     /locus_tag="TST_001"
+                     /codon_start=1
+                     /product="tstA protein"
+                     /transl_table=11
+     gene            complement(join(1001..1200,1261..1459))
+                     /gene="tstB"
+                     /locus_tag="TST_002"
+     CDS             complement(join(1001..1200,1261..1459))
+                     /gene="tstB"
+                     /locus_tag="TST_002"
+                     /codon_start=1
+                     /product="tstB protein"
+                     /transl_table=11
+     gene            1801..2101
+                     /gene="tstC"
+                     /locus_tag="TST_003"
+     CDS             1801..2101
+                     /gene="tstC"
+                     /locus_tag="TST_003"
+                     /codon_start=2
+                     /product="tstC protein"
+                     /transl_table=11
+ORIGIN
+        1 tttcctcatg caattcaaaa ccatgtccgt aatgtaggcg aaatagtaaa ccattttacg
+       61 gaggatacca aattcctcct tattcaggac ctaacctgag atggtaaacc aggtctctcc
+      121 gcccccttat aaaagctgtt gcaccccaag ttcaacggca gctgcaatgg aaataggcaa
+      181 tgacggatat atattaaaaa gtgttttaag atacattgag gcccgttcgt gctcctcgcc
+      241 cagcattgct ttgagaggga cttcagccaa tagacctgca taccggctca ttcttcatgt
+      301 gcaacctagg gagaatgtgt acatacgctc ttactgcggt cgcgtctata catttgcttc
+      361 gttgactagc aacccagggc tactattccc cccgcggtaa cccacccagt attcctaacg
+      421 gagcataaat cccacccgaa ctaagtttgt cgaaccttgg tccaagatcg ggactcggtc
+      481 tccaggtaag acgggctcat tcataaacgt tactaagggg tataatcttc tatttgtggg
+      541 tgggaacact tagtagactt gcaatccaat tacagcagtc ttgtgcgcct aggggcgccc
+      601 caaaggtaaa cgaaccgttg cggtcaatct tgtcgcggct gatgaatttg aagcagtggc
+      661 cgggagtgtg tgctcaggag ttcgtcccat gacacgatag agagagaaca tcctgttggg
+      721 cttaatgata tagaattccc tcgcttggat gagccatata gaccgcctct cgtcgtgttg
+      781 atctacctga catgtctctc gcgcgaccac ccaggattag actcatcatt cgggtagtag
+      841 acattatatt cgataccgtg gtagcctagg gtgttaacac ccctataaca cattagtccc
+      901 ttgtatgcag gcggtatcgg acggcgccca caccttggag gtatccagcg caaggcgcca
+      961 tatccgtacc ttactatcgc gcgaacttat gttgttttaa ttaagtatgg cgcggtacac
+     1021 cgtaaaatct aattgtccaa gccccctttc cacaatcatc tatccagact gcgagaggca
+     1081 ccaataatat cgctcgtcta ttggccctgc agaacggaac cgaaacgtgg gtagactcca
+     1141 taacttggcg tctcgacgtc ccagagaaac agagagggca gtaagaagct agtgcccgta
+     1201 gtagggaagc tccccgtggt ggtccggcca aagattactt aggttggggc gcctcgccag
+     1261 agtccgttaa catgagggag tgcaaaggca gtacctgggt ttcaaatgcg atgtcagacg
+     1321 cagatggcct gtataatggt cgggcgtacc ttatgcggcg tcccggcgtc ggtaacgacc
+     1381 cttggggtac cgtcggagac ccatctgcga aatgctcgct atgtttagga ctgacgtata
+     1441 gatgtccaac tctaaccatc tgccatcggt gttcacaacg gatgatcgag tgcttctcgc
+     1501 tcagttacga gcgtggcatc ggacaagaac gtccttatgt acggcgctac acaaggagat
+     1561 acagagcttg atttgaaccg tgggtgggag aggcccacgc cgaccggcta atatagcacg
+     1621 aagttcttcg atgcgactac gttaattttt ctaattgaag ctgggcttac tacccaagga
+     1681 cagggtcatc tgcaattcat aacgcagagc gatctattaa cgcttagggc cccctacgag
+     1741 gggcaacggt ccagtgtgtc aagtctagag atcttctcta gtggtggaca tgcgttggaa
+     1801 gatgactagc atgaattcgg gcctgccggc atgcaagtta caggtggcgc atttagttct
+     1861 gaactccact gtgcagagga aggtagagct aaaatcgcgc tgtagaggtc tcttttgtaa
+     1921 ccaccgggaa tatatcgaaa gttcttctct aaccattata ttacctgagg acttcgaagt
+     1981 cgtcttgcat gatttttacg cttcgcagta tgtgatctgc tatactaggt ggtcacgagg
+     2041 tgcttgtcaa tttaggagcg ctgcgagttc gcccaaaacg ataaggcggg ctgatggcta
+     2101 acggggcgta gaggctccac ggatgcttgg cggcaaagaa acgggcaaca tcatcagtca
+     2161 tctcataacg ggcgcctatg cacaaaggat accaagactc tggcgtacga gggtctcccc
+     2221 gttcgccgga cgcaggcaca actcatcgga atctcgctga taatatatcc acctcggccc
+     2281 gacccctgga gcacgaaggc agtgaacaag ccgagttgtt acctattagc actcaactta
+     2341 tacgacgagg gtggcgcttt ggtcctgcgc tcggaagtat tattgttaag ttacagtaag
+//
+LOCUS       plasmidA                2400 bp    DNA     circular SYN 01-JAN-1980
+DEFINITION  synthetic test plasmid.
+ACCESSION   plasmidA
+VERSION     plasmidA
+KEYWORDS    .
+SOURCE      .
+  ORGANISM  .
+            .
+FEATURES             Location/Qualifiers
+     source          1..2400
+                     /organism="synthetic construct"
+                     /mol_type="genomic DNA"
+                     /plasmid="pTest"
+     gene            101..400
+                     /gene="tstA"
+                     /locus_tag="TST_001"
+     CDS             101..400
+                     /gene="tstA"
+                     /locus_tag="TST_001"
+                     /codon_start=1
+                     /product="tstA protein"
+                     /transl_table=11
+     gene            complement(join(1001..1200,1261..1459))
+                     /gene="tstB"
+                     /locus_tag="TST_002"
+     CDS             complement(join(1001..1200,1261..1459))
+                     /gene="tstB"
+                     /locus_tag="TST_002"
+                     /codon_start=1
+                     /product="tstB protein"
+                     /transl_table=11
+     gene            1801..2101
+                     /gene="tstC"
+                     /locus_tag="TST_003"
+     CDS             1801..2101
+                     /gene="tstC"
+                     /locus_tag="TST_003"
+                     /codon_start=2
+                     /product="tstC protein"
+                     /transl_table=11
+ORIGIN
+        1 tttcctcatg caattcaaaa ccatgtccgt aatgtaggcg aaatagtaaa ccattttacg
+       61 gaggatacca aattcctcct tattcaggac ctaacctgag atggtaaacc aggtctctcc
+      121 gcccccttat aaaagctgtt gcaccccaag ttcaacggca gctgcaatgg aaataggcaa
+      181 tgacggatat atattaaaaa gtgttttaag atacattgag gcccgttcgt gctcctcgcc
+      241 cagcattgct ttgagaggga cttcagccaa tagacctgca taccggctca ttcttcatgt
+      301 gcaacctagg gagaatgtgt acatacgctc ttactgcggt cgcgtctata catttgcttc
+      361 gttgactagc aacccagggc tactattccc cccgcggtaa cccacccagt attcctaacg
+      421 gagcataaat cccacccgaa ctaagtttgt cgaaccttgg tccaagatcg ggactcggtc
+      481 tccaggtaag acgggctcat tcataaacgt tactaagggg tataatcttc tatttgtggg
+      541 tgggaacact tagtagactt gcaatccaat tacagcagtc ttgtgcgcct aggggcgccc
+      601 caaaggtaaa cgaaccgttg cggtcaatct tgtcgcggct gatgaatttg aagcagtggc
+      661 cgggagtgtg tgctcaggag ttcgtcccat gacacgatag agagagaaca tcctgttggg
+      721 cttaatgata tagaattccc tcgcttggat gagccatata gaccgcctct cgtcgtgttg
+      781 atctacctga catgtctctc gcgcgaccac ccaggattag actcatcatt cgggtagtag
+      841 acattatatt cgataccgtg gtagcctagg gtgttaacac ccctataaca cattagtccc
+      901 ttgtatgcag gcggtatcgg acggcgccca caccttggag gtatccagcg caaggcgcca
+      961 tatccgtacc ttactatcgc gcgaacttat gttgttttaa ttaagtatgg cgcggtacac
+     1021 cgtaaaatct aattgtccaa gccccctttc cacaatcatc tatccagact gcgagaggca
+     1081 ccaataatat cgctcgtcta ttggccctgc agaacggaac cgaaacgtgg gtagactcca
+     1141 taacttggcg tctcgacgtc ccagagaaac agagagggca gtaagaagct agtgcccgta
+     1201 gtagggaagc tccccgtggt ggtccggcca aagattactt aggttggggc gcctcgccag
+     1261 agtccgttaa catgagggag tgcaaaggca gtacctgggt ttcaaatgcg atgtcagacg
+     1321 cagatggcct gtataatggt cgggcgtacc ttatgcggcg tcccggcgtc ggtaacgacc
+     1381 cttggggtac cgtcggagac ccatctgcga aatgctcgct atgtttagga ctgacgtata
+     1441 gatgtccaac tctaaccatc tgccatcggt gttcacaacg gatgatcgag tgcttctcgc
+     1501 tcagttacga gcgtggcatc ggacaagaac gtccttatgt acggcgctac acaaggagat
+     1561 acagagcttg atttgaaccg tgggtgggag aggcccacgc cgaccggcta atatagcacg
+     1621 aagttcttcg atgcgactac gttaattttt ctaattgaag ctgggcttac tacccaagga
+     1681 cagggtcatc tgcaattcat aacgcagagc gatctattaa cgcttagggc cccctacgag
+     1741 gggcaacggt ccagtgtgtc aagtctagag atcttctcta gtggtggaca tgcgttggaa
+     1801 gatgactagc atgaattcgg gcctgccggc atgcaagtta caggtggcgc atttagttct
+     1861 gaactccact gtgcagagga aggtagagct aaaatcgcgc tgtagaggtc tcttttgtaa
+     1921 ccaccgggaa tatatcgaaa gttcttctct aaccattata ttacctgagg acttcgaagt
+     1981 cgtcttgcat gatttttacg cttcgcagta tgtgatctgc tatactaggt ggtcacgagg
+     2041 tgcttgtcaa tttaggagcg ctgcgagttc gcccaaaacg ataaggcggg ctgatggcta
+     2101 acggggcgta gaggctccac ggatgcttgg cggcaaagaa acgggcaaca tcatcagtca
+     2161 tctcataacg ggcgcctatg cacaaaggat accaagactc tggcgtacga gggtctcccc
+     2221 gttcgccgga cgcaggcaca actcatcgga atctcgctga taatatatcc acctcggccc
+     2281 gacccctgga gcacgaaggc agtgaacaag ccgagttgtt acctattagc actcaactta
+     2341 tacgacgagg gtggcgcttt ggtcctgcgc tcggaagtat tattgttaag ttacagtaag
+//

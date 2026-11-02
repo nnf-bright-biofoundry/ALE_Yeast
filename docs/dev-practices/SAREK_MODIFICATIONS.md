@@ -30,9 +30,9 @@ for f in main.nf nextflow.config nextflow_schema.json workflows/sarek/main.nf; d
 | Root files | — | `main.nf`, `nextflow.config`, `nextflow_schema.json` |
 | Core workflow | — | `workflows/sarek/main.nf` ⚠️ heaviest |
 | `subworkflows/local/` | 5 | 9 |
-| `modules/local/` | 19 | 0 |
+| `modules/local/` | 21 | 0 |
 | `modules/nf-core/` | 5 (installed) | **4 patched** ⚠️ |
-| `conf/` | 18 | 7 |
+| `conf/` | 19 | 7 |
 
 ---
 
@@ -176,7 +176,7 @@ read preprocessing (2026-09-02): `trim_adapter` (upstream `trim_fastq` kept as d
 | `bam_variant_calling_somatic_mutect2` | FilterMutectCalls placeholder-channel fix (runs without germline resource/PoN). |
 | `annotation_cache_initialisation` | Skip `exists()/isDirectory()` for `az|s3|gs://` cache paths (blob prefixes are not directories). ⚠️ **File deleted upstream in 3.9.0** (#2194), replaced by nf-core `utils_annotation_cache`, which also applies the `<db>/<db>/` key to every cloud URL — our flat `az://` cache dirs fail under it. Port as a subworkflow patch, or make it moot with a tarball cache: `ale_sarek_upgrade_runbook.md` → *Known Rebase Hazards: SnpEff cache*. |
 
-## `modules/local/` — ADDED (19, additive)
+## `modules/local/` — ADDED (21, additive)
 
 One row per directory. `bin/check_doc_drift.sh` (run by the commit gate) keeps this table, the two
 other ADDED tables and the counts in their headings and in the Summary equal to the tree — the rebase
@@ -203,6 +203,8 @@ own `modules/local/` (`add_info_to_vcf`, `create_intervals_bed`, `samtools`) is 
 | `publish_vcfs` | The report's download VCFs, renamed for users (annotated when an annotator ran, else raw). |
 | `tiddit_sv_filter` | Manta-inspired soft filters for TIDDIT's PASS view (2026-08-31). |
 | `preflight_reference` | Task-level reference preflight (2026-09-28): `bin/preflight_reference.sh` in the gawk container; one check today, FASTA vs `report_gff3` contig names (`docs/usage/preflight_checks.md`). |
+| `genbank_reference` | GenBank reference route, step 1 (2026-11-02, unwired until `--genbank` lands): `bin/genbank_to_reference.py` in the BioPython container derives from one GenBank the FASTA and the report GFF3 (LOCUS names, record order), the contig manifest, the per-genome `snpEff.config` (one `codonTable` line per contig whose `/transl_table` is not 1), the snpEff copy with VERSION := LOCUS, the names snpEff will store, and two rows of the input-checks table. **Contig-name wiring convention** (`genbank_reference_input.md` §3.2): every contig name in a FASTA, GFF3, config line or manifest is the LOCUS name; whoever hands snpEff a GenBank rewrites VERSION first; snpEff stores names *simplified* (leading chr/chromo/chromosome and leading zeros stripped) and simplifies a VCF's CHROM the same way, so every output keeps LOCUS. |
+| `snpeff_build` | GenBank reference route, step 2: `snpEff build -genbank` in nf-core module shape (`meta.yml`) on snpEff's bundled config plus the per-genome codonTable lines; gates in `bin/snpeff_build_gates.sh` (protein check `Errors: 0`, stored contig names == the expected list), exit 65 on failure; the GenBank copy removed from the cache afterwards. Candidate for an nf-core `snpeff/build` contribution (inline the gate script then). |
 | `breseq` | breseq (`breseq/`, `breseq/summary_mqc/`) — Tier-2, AMP-v1 legacy, not released. |
 | `gdtools` | breseq's gdtools (`gdtools/convert/`) — legacy, with `breseq`. |
 
@@ -241,7 +243,7 @@ container is patched since 2026-10-01 (PATCHED table above).
 
 ---
 
-## `conf/` — ADDED (18)
+## `conf/` — ADDED (19)
 
 One row per file (`*.config` and `*.yml`, path relative to `conf/`), kept equal to the tree by
 `bin/check_doc_drift.sh` like the other two ADDED tables.
@@ -249,6 +251,7 @@ One row per file (`*.config` and `*.yml`, path relative to `conf/`), kept equal 
 | File | Role |
 |------|------|
 | `modules/manta_ale.config` | Manta overrides: `--exome` when `manta_high_sensitivity` (or `wes`); keeps upstream `manta.config` 0-diff. Pairs with `assets/manta_high_sensitivity.ini`. |
+| `modules/genbank_reference.config` | `GENBANK_REFERENCE` and `SNPEFF_BUILD` (2026-11-02): errorStrategy terminate + debug like the preflight task, publish of their input-checks tables and of `reference/<db>/` (inert until the `--genbank` route is wired). |
 | `modules/split_joint_vcf.config` | Per-caller (HC, Manta) rules for `SPLIT_JOINT_VCF`, keyed on `meta.variantcaller`; moved out of `joint_germline.config` so that upstream file only carries the VARIANTFILTRATION_FALLBACK change. |
 | `modules/preflight.config` | `PREFLIGHT_REFERENCE` (2026-09-28, included from `nextflow.config`): `errorStrategy 'terminate'` (the base strategy is `finish`; the script exits 65, outside the retry range), `debug` so its verdict lines reach the console, publish to `reports/preflight/`. |
 | `modules/mutation_report.config` | Process settings of the `mutation_report` subworkflow. |

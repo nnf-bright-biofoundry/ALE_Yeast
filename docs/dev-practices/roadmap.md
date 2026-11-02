@@ -627,7 +627,8 @@ pipeline; none is about the transport.
   message.
 - ~~**[med] Standalone SnpEff cache builder, then plug in.**~~ **Superseded 2026-11-02:** the build runs
   inside the pipeline from `--genbank` (two tasks before alignment, `--build_only_index` as the standalone
-  mode), so no separate workflow; the acceptance tests below carried over as the two build gates. Design
+  mode), so no separate workflow; the acceptance tests below carried over as the two build gates (both tasks
+  landed unwired on 2026-11-02 with module tests; the wiring is next). Design
   `genbank_reference_input.md` §5, task `PLAN_next_checklist.md` §O. Was: `build_snpeff_cache.nf` beside
   `generate_mutation_report.nf`: FASTA + GFF3 or GenBank in, versioned tarball out (consumed by the
   tarball item above), same `snpeff:5.1` container. Acceptance tests: chromosome-name overlap between

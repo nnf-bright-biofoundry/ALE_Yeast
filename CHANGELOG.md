@@ -28,6 +28,32 @@
 
 ### Added
 
+- **GenBank reference route, steps 1 and 2, landed unwired** (2026-11-02; design
+  `docs/dev-practices/genbank_reference_input.md` §5). `GENBANK_REFERENCE` (`bin/genbank_to_reference.py`,
+  BioPython 1.81 container) derives from one GenBank, gzipped or not: the FASTA and the report GFF3 with
+  the LOCUS names in record order (gene > mRNA > exon/CDS with `Parent` links and phase); the contig
+  manifest (LOCUS, VERSION, length, sequence md5, type from `/organelle` and `/plasmid`, chromosome,
+  transl_table, order, plus the file's sha256); the per-genome `snpEff.config` with one `codonTable` line
+  per contig whose `/transl_table` is not 1; the copy snpEff builds from, with every VERSION set to the
+  LOCUS name (inserted when the file has none); the names snpEff will store; and two rows of the input-
+  checks table. Identifiers: OK when every record has a versioned accession, WARN without one, ERROR on a
+  duplicate LOCUS, a reserved character, a record without sequence, or two names snpEff would merge.
+  Genetic code: OK, WARN for an organelle contig whose CDS state no table (standard assumed, run
+  proceeds), ERROR on mixed tables on one contig or a table snpEff 5.1 has no name for. `SNPEFF_BUILD`
+  (nf-core module shape, `bin/snpeff_build_gates.sh`) runs `snpEff build -genbank` on snpEff's bundled
+  config plus those lines, skips the protein check only when the file has no `/translation` (snpEff fails
+  a build on `OK: 0`), and stops the run with exit 65 unless the check reports `Errors: 0` and the stored
+  contig names equal the expected list; the GenBank copy leaves the cache after the build. Three facts
+  measured on the way, all in the design note: snpEff stores chromosome names simplified (a leading
+  chr/chromo/chromosome and leading zeros stripped, `chrB` becomes `B`) and simplifies a VCF's CHROM the
+  same way, so every output keeps the LOCUS name; a record without any feature is dropped from the
+  database; NCBI states no `/transl_table` on nuclear CDS (the INSDC default), so absence is the standard
+  code and only an organelle without a table warns. Full S288C GenBank in both namings: 6021 CDS verified,
+  0 errors, 4 s extract, 20 s build. Tests `tests/genbank_reference.nf.test` (7 cases) and
+  `tests/snpeff_build.nf.test` (5 cases, the extract task in each setup, a negative control without the
+  codon-table line reading `Errors: 19`); fixtures under `tests/fixtures/genbank/` with a committed
+  generator. `conf/modules/genbank_reference.config` is included from `nextflow.config` and inert until the
+  `--genbank` wiring, the next step; no run changes.
 - **The soft-filter step has a dedicated test on real data** (2026-10-19;
   `tests/variantfiltration_fallback.nf.test`, `nextflow_process`, real GATK, 2 cases, ~35 s). The module
   is stock nf-core; what is ours is the JEXL in `conf/modules/joint_germline.config`, whose failure

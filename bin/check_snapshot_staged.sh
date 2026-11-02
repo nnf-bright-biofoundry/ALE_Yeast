@@ -94,6 +94,11 @@ declare -A TESTMAP=(
   ['conf/modules/preflight.config']=preflight_reference
   ['conf/modules/annotate.config']=snpeff_codon_table      # SNPEFF_SNPEFF ext.args; the codonTable line of the cache's snpEff.config is read at annotation time
   ['modules/nf-core/snpeff/snpeff/']=snpeff_codon_table
+  ['modules/local/genbank_reference/']=genbank_reference
+  ['bin/genbank_to_reference.py']=genbank_reference
+  ['modules/local/snpeff_build/']=snpeff_build
+  ['bin/snpeff_build_gates.sh']=snpeff_build
+  ['conf/modules/genbank_reference.config']='genbank_reference snpeff_build'
 )
 for path in "${!TESTMAP[@]}"; do
   if grep -q "^${path}" <<<"$staged"; then

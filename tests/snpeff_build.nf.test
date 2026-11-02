@@ -1,0 +1,201 @@
+nextflow_process {
+
+    name "SNPEFF_BUILD unit"
+    script "../modules/local/snpeff_build/main.nf"
+    process "SNPEFF_BUILD"
+    tag "ottilie"
+    tag "module"
+
+    // Run with: nf-test test -c tests/nf-test-ottilie.config tests/snpeff_build.nf.test
+    //
+    // Unit test for the snpEff build task of the GenBank reference route (step 2; step 1,
+    // GENBANK_REFERENCE, runs in each case's setup and feeds it). Contract (docs/dev-practices/
+    // genbank_reference_input.md §5.3): `snpEff build -genbank` on the VERSION-rewritten copy with the
+    // bundled config plus the per-genome codonTable lines; gate 1 = the protein check reports Errors: 0
+    // (skipped, as a SKIPPED row, when the file has no /translation: snpEff fails a build on "OK: 0");
+    // gate 2 = the names stored in the cache equal the expected list (snpEff's simplified spelling);
+    // each gate a row of the "yAMP input checks" table, ERROR on the console and exit 65 on a failure;
+    // genes.gbk removed from the cache afterwards; the cache in the snpeff_cache/<db>/ layout the
+    // pipeline's SNPEFF_SNPEFF takes as -dataDir.
+    //
+    // The negative control rebuilds the NCBI Mito record WITHOUT its codon-table line: the 19 CDS then
+    // translate with the standard code and every one fails the protein check (Errors: 19), the number
+    // that first exposed the mis-annotation (design note §4.2). The gate turns it into a stop.
+
+    def FX   = "\$projectDir/tests/fixtures/genbank"
+    def rows = { mqc -> path(mqc).readLines().findAll { !it.startsWith('#') } }
+
+    test("NCBI Mito record: protein check 19/19 with the codon-table line, one contig, cache in pipeline layout") {
+        setup {
+            run("GENBANK_REFERENCE") {
+                script "../modules/local/genbank_reference/main.nf"
+                process {
+                    """
+                    input[0] = file("$FX/mito_ncbi.gbff")
+                    input[1] = 'mito'
+                    """
+                }
+            }
+        }
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = GENBANK_REFERENCE.out.snpeff_input
+                input[1] = GENBANK_REFERENCE.out.expected_contigs
+                """
+            }
+        }
+        then {
+            def table = rows(process.out.mqc[0])
+            def cache = process.out.cache[0][1]
+            assertAll(
+                { assert process.success },
+                { assert process.stdout.findAll { it.contains('[yAMP preflight]') } == [] },
+                { assert table == [ 'Check\tstatus\tdetail',
+                    'snpEff build: protein check\tOK\t19 CDS translate to the file\'s /translation, 0 without one (Errors: 0): gene models and genetic code verified for mito',
+                    'snpEff build: contig names\tOK\t1 contig name(s) in the cache, equal to the expected list' ] },
+                { assert path("${cache}/mito/snpEffectPredictor.bin").exists() },
+                { assert path("${cache}/mito/sequence.bin").exists() },
+                { assert !path("${cache}/mito/genes.gbk").exists() },     // the build intermediate is removed
+                { assert path("${cache}/mito/snpEff.config").readLines() == [ 'mito.genome : mito', 'mito.NC_001224.codonTable : Yeast_Mitochondrial' ] },
+                { assert path(process.out.log[0]).text.contains('Protein check:\tmito\tOK: 19\tNot found: 0\tErrors: 0') },
+                { assert path(process.out.versions[0]).text.contains('snpeff: 5.1') },
+            )
+        }
+    }
+
+    test("negative control, same record without the codon-table line: Errors: 19, ERROR row, exit 65") {
+        setup {
+            run("GENBANK_REFERENCE") {
+                script "../modules/local/genbank_reference/main.nf"
+                process {
+                    """
+                    input[0] = file("$FX/mito_ncbi.gbff")
+                    input[1] = 'mito'
+                    """
+                }
+            }
+        }
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = GENBANK_REFERENCE.out.snpeff_input.map { meta, dir ->
+                    def noline = file("$outputDir/noline/" + meta.id)
+                    noline.mkdirs()
+                    file(dir.toString() + '/genes.gbk').copyTo(file(noline.toString() + '/genes.gbk'))
+                    file(noline.toString() + '/snpEff.config').text = file(dir.toString() + '/snpEff.config').readLines().findAll { !it.contains('codonTable') }.join('\\n') + '\\n'
+                    [ meta, noline ]
+                }
+                input[1] = GENBANK_REFERENCE.out.expected_contigs
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.failed },
+                { assert process.errorReport.contains('terminated with an error exit status (65)') },
+                { assert (process.stdout + process.errorReport.readLines()).any {
+                    it.contains('[yAMP preflight] ERROR snpEff build: protein check: 19 of 19 CDS do not translate to the file\'s /translation (OK: 0, Errors: 19)') } },
+            )
+        }
+    }
+
+    test("lab-style draft (no /translation, /chromosome=M): protein check SKIPPED, contig stored as mito_draft") {
+        setup {
+            run("GENBANK_REFERENCE") {
+                script "../modules/local/genbank_reference/main.nf"
+                process {
+                    """
+                    input[0] = file("$FX/mito_draft.gb")
+                    input[1] = 'draft'
+                    """
+                }
+            }
+        }
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = GENBANK_REFERENCE.out.snpeff_input
+                input[1] = GENBANK_REFERENCE.out.expected_contigs
+                """
+            }
+        }
+        then {
+            def table = rows(process.out.mqc[0])
+            assertAll(
+                { assert process.success },
+                { assert process.stdout.findAll { it.contains('[yAMP preflight] ERROR') } == [] },
+                { assert table[1].startsWith('snpEff build: protein check\tSKIPPED\tthe GenBank carries no /translation') },
+                // OK here means the stored name equals the expected 'mito_draft': the inserted VERSION beat /chromosome="M"
+                { assert table[2] == 'snpEff build: contig names\tOK\t1 contig name(s) in the cache, equal to the expected list' },
+                { assert path(process.out.log[0]).text.contains("Chromosome: 'mito_draft'") },
+            )
+        }
+    }
+
+    test("synthetic plasmidA + chrB: stored as plasmidA and B, which the expected list anticipates") {
+        setup {
+            run("GENBANK_REFERENCE") {
+                script "../modules/local/genbank_reference/main.nf"
+                process {
+                    """
+                    input[0] = file("$FX/synthetic_two_records.gb")
+                    input[1] = 'syn'
+                    """
+                }
+            }
+        }
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = GENBANK_REFERENCE.out.snpeff_input
+                input[1] = GENBANK_REFERENCE.out.expected_contigs
+                """
+            }
+        }
+        then {
+            def table = rows(process.out.mqc[0])
+            assertAll(
+                { assert process.success },
+                { assert table[1].startsWith('snpEff build: protein check\tSKIPPED') },
+                { assert table[2] == 'snpEff build: contig names\tOK\t2 contig name(s) in the cache, equal to the expected list' },
+                { assert path(process.out.log[0]).text.contains("Chromosome: 'B'") },
+                { assert path("${process.out.cache[0][1]}/syn/snpEff.config").readLines()[1] == 'syn.plasmidA.codonTable : Bacterial_and_Plant_Plastid' },
+            )
+        }
+    }
+
+    test("no expected list: the contig-name gate is SKIPPED") {
+        setup {
+            run("GENBANK_REFERENCE") {
+                script "../modules/local/genbank_reference/main.nf"
+                process {
+                    """
+                    input[0] = file("$FX/synthetic_two_records.gb")
+                    input[1] = 'syn'
+                    """
+                }
+            }
+        }
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = GENBANK_REFERENCE.out.snpeff_input
+                input[1] = []
+                """
+            }
+        }
+        then {
+            def table = rows(process.out.mqc[0])
+            assertAll(
+                { assert process.success },
+                { assert table[2] == 'snpEff build: contig names\tSKIPPED\tno expected contig list given' },
+            )
+        }
+    }
+}

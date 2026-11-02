@@ -425,7 +425,7 @@ nf-test's four test types, and what each maps to in this fork:
 | Layer | nf-test type | Our surface | Status |
 |-------|--------------|-------------|--------|
 | Function | `nextflow_function` | Groovy helpers we changed | **0 owned** |
-| Process | `nextflow_process` | the 19 fork-added `modules/local/` directories (the `SAREK_MODIFICATIONS.md` inventory; 20 processes, `breseq/` holds two; the three inherited from sarek, `add_info_to_vcf`, `create_intervals_bed`, `samtools/reindex_bam`, are upstream code) + upstream modules whose behaviour we own via config | **4** (`fastp_preprocessing` — `FASTP` under `conf/modules/trimming.config`, 11 cases, one of them on the `nextflow.config` defaults alone, 1 000-pair fixture; `preflight_reference` — the task-level reference preflight, 4 cases on hand-made fixtures: OK with an embedded `##FASTA`, SKIPPED without a GFF3, ERROR/exit 65 on renamed contigs, OK-with-note when the GFF3 has a contig the FASTA lacks; `variantfiltration_fallback` — the soft-filter `ext.args` of `conf/modules/joint_germline.config` run by real GATK on the real 100-record joint VCF, 2 cases: the exact FILTER string of every record plus a negative control with the broken `TYPE == SNP` spelling; `snpeff_codon_table` — the per-genome `codonTable` line of the shipped snpEff cache, run by real snpEff on a synthetic COX2 variant, 3 cases: the shipped cache, a 25 KB Mito-only fixture cache with the line and the same without it) |
+| Process | `nextflow_process` | the 21 fork-added `modules/local/` directories (the `SAREK_MODIFICATIONS.md` inventory; 22 processes, `breseq/` holds two; the three inherited from sarek, `add_info_to_vcf`, `create_intervals_bed`, `samtools/reindex_bam`, are upstream code) + upstream modules whose behaviour we own via config | **6** (`fastp_preprocessing` — `FASTP` under `conf/modules/trimming.config`, 11 cases, one of them on the `nextflow.config` defaults alone, 1 000-pair fixture; `preflight_reference` — the task-level reference preflight, 4 cases on hand-made fixtures: OK with an embedded `##FASTA`, SKIPPED without a GFF3, ERROR/exit 65 on renamed contigs, OK-with-note when the GFF3 has a contig the FASTA lacks; `variantfiltration_fallback` — the soft-filter `ext.args` of `conf/modules/joint_germline.config` run by real GATK on the real 100-record joint VCF, 2 cases: the exact FILTER string of every record plus a negative control with the broken `TYPE == SNP` spelling; `snpeff_codon_table` — the per-genome `codonTable` line of the shipped snpEff cache, run by real snpEff on a synthetic COX2 variant, 3 cases: the shipped cache, a 25 KB Mito-only fixture cache with the line and the same without it; `genbank_reference` — the GenBank extract task, 7 cases: the real NC_001224 record plain and gzipped, a lab-style draft, four synthetic files for CDS phases on both strands, a duplicate LOCUS, mixed tables and a chr1/1 name collision; `snpeff_build` — the snpEff build with its two gates, 5 cases, the extract task in each setup, incl. the negative control without the codon-table line, Errors: 19) |
 | Subworkflow | `nextflow_workflow` | the custom `subworkflows/local/` | **4** (`split_joint_vcf`; `joint_calling_output_selection` — `BAM_JOINT_CALLING_GERMLINE_GATK`, stub mode: the three-tier output selection, one case per tier (fallback only, VQSR present, neither) plus the no-input starvation shape; `manta_experiment_grouping` — `BAM_VARIANT_CALLING_GERMLINE_MANTA` under `--joint_manta`, stub mode: one Manta task per experiment, keyed and named as documented; `fastqc_trimmed` — `FASTQC_TRIMMED_QC`: unsplit pair, fastp-named shards incl. an empty one, single-end lone file; 136 KB of shard fixtures) |
 | Pipeline | `nextflow_pipeline` | supported end-to-end routes | **4** (`ottilie_e2e`; preview-mode smoke tests `report_gff3_optional`, `tools_without_annotation`, `preflight` — the latter reads `[yAMP preflight]` lines from nf-test's `meta/nextflow.log` and error text from `workflow.stdout`; 8 cases incl. the three `--qc_only` ones) |
 | Gate | bash, outside nf-test | the `--qc_only` starvation gate (`workflows/sarek/main.nf`) | **`tests/qc_gate.sh`** — (a) minutes: a QC-only run of the test set executes *exactly* the allow-listed processes (read QC + reference prep, 15 processes / 18 tasks (2026-09-28, with the reference preflight task; 17 before); since 2026-09-29 the MultiQC process on the list is `MULTIQC_READ_QC` — the alignment-QC and complete-QC reports must not run); a stray process means something downstream of alignment fires on empty input (`toList`/`ifEmpty`/value channel) and the failure message names it. (b) one e2e: `-resume` of run (a) without the flag caches every run-1 task but the read-QC MultiQC report (`MULTIQC_READ_QC`; its input checks and summary record `qc_only`), matches a one-shot run's task list, and `tests/qc_gate_compare.py` finds the deliverables identical (md5 for the `.nftignore`-kept files, records for every VCF). Not nf-test because it needs two launches sharing a session. Run (a) after any `workflows/`/`subworkflows/` change (commit-gate trailer), (b) when the gate or the resume contract itself changes |
@@ -469,7 +469,7 @@ prefer a case in our own `tests/` file (see §10 rationale).
 
 ### Layer 2 — `nextflow_process` (biggest gap)
 
-18 of the 19 fork-added `modules/local/` are untested in isolation (`preflight_reference` has had a process test since 2026-09-28). Two upstream modules whose *behaviour we own*, through config or through what we ship with them, have one: `VARIANTFILTRATION_FALLBACK` since 2026-10-19 and `SNPEFF_SNPEFF` (the cache's codon-table line) since 2026-11-02. The rest are only exercised transitively through the
+18 of the 21 fork-added `modules/local/` are untested in isolation (`preflight_reference` since 2026-09-28, `genbank_reference` and `snpeff_build` since 2026-11-02 have one). Two upstream modules whose *behaviour we own*, through config or through what we ship with them, have one: `VARIANTFILTRATION_FALLBACK` since 2026-10-19 and `SNPEFF_SNPEFF` (the cache's codon-table line) since 2026-11-02. The rest are only exercised transitively through the
 e2e snapshot, which tells you *that* something changed, not *what* broke. Priority order by logic
 density:
 
@@ -520,16 +520,28 @@ density:
    README) with the line (synonymous) and without it (`stop_lost p.Ter56Trpext*?`), the negative control
    that measures what case 1 is sensitive to and runs on a fresh clone. The gate maps it from
    `conf/modules/annotate.config` and `modules/nf-core/snpeff/snpeff/`.
-3. **Matrix/cohort builders** — `build_cn_matrix`, `build_cn_cohort`, `build_sv_matrix`. Real
+3. **GenBank reference tasks — DONE 2026-11-02** (`tests/genbank_reference.nf.test`, 7 cases;
+   `tests/snpeff_build.nf.test`, 5 cases, ~2 min each). The extract task's contract is a set of
+   derived files whose every line is predictable from the fixture, so the tests pin them literally:
+   the whole synthetic GFF3 (phases 0/2/1 across both strands), the manifest rows, the config lines,
+   the rewritten VERSION line, the expected cache names, the exact verdict strings. The build test
+   runs the real `snpEff build -genbank` with the extract task in its `setup` and asserts the gate
+   rows; its negative control strips the codon-table line from the Mito input in a channel `map`
+   and expects `Errors: 19`, the number that exposed the mis-annotation. Fixtures are the real
+   NC_001224 record (176 KB) and five generated files (`tests/fixtures/genbank/make_fixtures.py`,
+   deterministic). Two snpEff behaviours were found by these tests, not by reading: stored names are
+   simplified (`chrB` → `B`), and a `codonTable` line in a `-c` replacement config needs the bundled
+   table definitions beside it.
+4. **Matrix/cohort builders** — `build_cn_matrix`, `build_cn_cohort`, `build_sv_matrix`. Real
    transformation logic with known edge cases (the Jensen's-inequality collapse bug, `fold_change`
    re-derivation). Pure table-in/table-out — cheap, deterministic fixtures.
-4. **SV merge** — `survivor_sv_merge`, `survivor_cohort_merge` (incl. the input-sort guard already
+5. **SV merge** — `survivor_sv_merge`, `survivor_cohort_merge` (incl. the input-sort guard already
    on the roadmap).
-5. **VCF manipulation** — `filter_pass_vcf`, `add_info_to_vcf`, `prepare_vcf`. Small fixtures,
+6. **VCF manipulation** — `filter_pass_vcf`, `add_info_to_vcf`, `prepare_vcf`. Small fixtures,
    assertable record counts — same idiom as `split_joint_vcf.nf.test`.
-6. **Report/format** — `generate_index`, `igvreports_*`, `cnr_to_bedgraph`, `prepare_gff3`. Watch
+7. **Report/format** — `generate_index`, `igvreports_*`, `cnr_to_bedgraph`, `prepare_gff3`. Watch
    determinism: igv-report HTML varies run-to-run; assert the `tableJson` blob, not the file hash.
-7. **`MANTA_GERMLINE` under `--manta_high_sensitivity`** — the third upstream module whose behaviour
+8. **`MANTA_GERMLINE` under `--manta_high_sensitivity`** — the third upstream module whose behaviour
    we own via config, and the flag has **no automated coverage** (added 2026-09-10; it is opt-in
    only, so nothing is pending on it). Two halves, in two places: `--exome` from the `ext.args`
    closure in `conf/modules/manta_ale.config` (selector `MANTA_GERMLINE|MANTA_TUMORONLY|MANTA_SOMATIC`,

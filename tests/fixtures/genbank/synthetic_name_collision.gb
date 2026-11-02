@@ -1,0 +1,48 @@
+LOCUS       chr1                     350 bp    DNA     linear   SYN 01-JAN-1980
+DEFINITION  synthetic name collision.
+ACCESSION   chr1
+VERSION     chr1
+KEYWORDS    .
+SOURCE      .
+  ORGANISM  .
+            .
+FEATURES             Location/Qualifiers
+     source          1..350
+                     /organism="synthetic construct"
+                     /mol_type="genomic DNA"
+     CDS             101..250
+                     /locus_tag="g_chr1"
+                     /codon_start=1
+                     /transl_table=11
+ORIGIN
+        1 acggatcata tcactaccca cgttttttgc acaagcctgt ccgacgtgta tatttggcgt
+       61 ctggagtcaa gacaggcatc tggctgattt acgagtagtc atgccggtct cgcatattcg
+      121 gggccttcaa cgtgtcgggc ccggctcatg tttcggtgat atacgccttc gggggcaagt
+      181 aactgccgac atactcgtgg gaatcatcat gtcgctactt aagattggcg ggttagaaat
+      241 tagtctttaa tcacctgttt tatcgcataa tgatcgctat ctacctcctg tccgaacgtt
+      301 catgagaaac gcacagaatt acgatcttac gactctgcat agaattattt
+//
+LOCUS       1                        350 bp    DNA     linear   SYN 01-JAN-1980
+DEFINITION  synthetic name collision.
+ACCESSION   1
+VERSION     1
+KEYWORDS    .
+SOURCE      .
+  ORGANISM  .
+            .
+FEATURES             Location/Qualifiers
+     source          1..350
+                     /organism="synthetic construct"
+                     /mol_type="genomic DNA"
+     CDS             101..250
+                     /locus_tag="g_1"
+                     /codon_start=1
+                     /transl_table=11
+ORIGIN
+        1 acggatcata tcactaccca cgttttttgc acaagcctgt ccgacgtgta tatttggcgt
+       61 ctggagtcaa gacaggcatc tggctgattt acgagtagtc atgccggtct cgcatattcg
+      121 gggccttcaa cgtgtcgggc ccggctcatg tttcggtgat atacgccttc gggggcaagt
+      181 aactgccgac atactcgtgg gaatcatcat gtcgctactt aagattggcg ggttagaaat
+      241 tagtctttaa tcacctgttt tatcgcataa tgatcgctat ctacctcctg tccgaacgtt
+      301 catgagaaac gcacagaatt acgatcttac gactctgcat agaattattt
+//

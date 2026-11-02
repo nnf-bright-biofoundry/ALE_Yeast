@@ -1,6 +1,6 @@
 # Reference genome from one GenBank file: design note
 
-**Status: design agreed 2026-11-02; O.1 (the codon-table line in today's caches, §4.3) done the same day, the rest not implemented.** Opened 2026-10-29 from a question about why
+**Status: design agreed 2026-11-02; O.1 (the codon-table line in today's caches, §4.3) and O.2 (the two build tasks of §5.1, unwired, module-tested) done the same day; the wiring (§6) and everything after it not implemented.** Opened 2026-10-29 from a question about why
 the pipeline takes FASTA + SnpEff cache where the legacy AMP v1 pipeline took a single GenBank; reviewed
 decision by decision on 2026-11-02 with the launch form and a future ALEdb registration in view. Every
 number here was measured with the pipeline's own snpEff image (`quay.io/biocontainers/snpeff:5.1--hdfd78af_2`)
@@ -28,6 +28,8 @@ or CNVKit image; the commands are in §9 so the measurements can be repeated. Th
 | 15 | ALEdb (Aletechdev/aledb) holds no contig length or md5 today; the pipeline publishes the manifest regardless, the database side is later work | §3.3 |
 | 16 | CNVKit's chromosome X heuristic: documented, measured in the pipeline's container, no code change; cannot be measured on the 4-chromosome test set | `docs/variant-calling/cnvkit/cnvkit_sex_chromosome_heuristic.md` |
 | 17 | Gzipped GenBank input works for both snpEff and BioPython (measured), so `.gz` is accepted at no cost; low priority either way | §9 |
+| 18 | **`/transl_table` flow (2026-11-02, while building O.2):** one `codonTable` line per contig whose table is not 1, keyed on LOCUS, plus a `transl_table` manifest column. **Absence is the standard code** (the INSDC default; NCBI's S288C file states no table on any nuclear CDS), silently; an **organelle** contig without a table gets a WARN (standard assumed, run proceeds); mixed tables on one contig or a number snpEff has no table for is an ERROR. The build's protein check is skipped only when the file has no `/translation` | §4.3, §5.5 |
+| 19 | **snpEff simplifies stored chromosome names** (measured 2026-11-02): a leading `chr` / `chromo` / `chromosome` (any case) and leading zeros are stripped, `chrB` is stored as `B`; a VCF's CHROM is simplified the same way, so outputs keep LOCUS and still annotate. Gate 2 compares against the simplified expectation; two LOCUS names that collapse to one are an ERROR; a record without any feature is dropped from the database | §3.2, §5.3 |
 
 ## 1. Why one GenBank is enough, for every microbe
 
@@ -140,6 +142,21 @@ asserts the result. **This wiring is a convention future work must keep**: whoev
 into a FASTA, a GFF3, a config line or a manifest must take it from LOCUS, and whoever hands snpEff a GenBank
 must rewrite VERSION first. Recorded in `SAREK_MODIFICATIONS.md` when the builder lands.
 
+**A third rule, found by the O.2 module tests (2026-11-02): snpEff simplifies the name it stores.** On 18
+LOCUS spellings built in the 5.1 container (`ChromosomeSimpleName`): leading zeros, then a leading
+`chromosome` / `chromo` / `chr` in any case and an underscore after it are stripped, repeatedly; a name
+that would become empty is kept. So `chr01`, `Chromosome_7`, `chromoX`, `CHR9`, `chr_B`, `0chr5` and
+`Chr007` are stored as `1`, `7`, `X`, `9`, `B`, `5` and `7`, while `chrom1` becomes `om1`, `chr` stays
+`chr`, and `scaffold_3`, `Mito`, `MT`, `NC_001224` are unchanged. A VCF's CHROM goes through the same
+function at annotation time: a record on `chrB` annotates against the stored `B` and keeps `chrB` in the
+output, an unknown name reads `ERROR_CHROMOSOME_NOT_FOUND`. Consequences: outputs keep the LOCUS name
+everywhere (the convention above holds), the second build gate compares the stored names with the
+*simplified* FASTA headers, and two LOCUS names that collapse to one (`chr1` and `1`) are an ERROR
+in the extract task, since the cache would merge them. One more: a record with no feature at all is
+removed by the build ("Remove empty chromosomes"); one `source` feature is enough to keep it, and the
+expected list leaves such records out. `bin/genbank_to_reference.py` carries the function and its 19
+measured cases are a test.
+
 ### 3.3 What this means for ALEdb registration
 
 Nothing done now has to be undone then. The contig name matches. The work a future registration does need is
@@ -208,6 +225,9 @@ stops with `No such codon table`. At pipeline time the bundled config is primary
 **For the builder (the GenBank-only task):**
 
 1. Parse `/transl_table` from every CDS; group by contig; error if a contig mixes tables (never seen, but cheap).
+   A CDS without the qualifier is table 1 by the INSDC rule (`/transl_table=1` may be omitted, and NCBI's
+   S288C file omits it on every nuclear CDS), so absence is the standard code and says nothing; an organelle
+   contig without any table is the one case that warns (decision 18).
 2. Map the NCBI number to snpEff's table name and write `<db>.<contig>.codonTable : <name>` for every contig
    whose table is not 1 into `<cache>/<db>/snpEff.config`, next to the `.genome` line. The `<contig>` key is
    the LOCUS name (§3).
@@ -293,6 +313,7 @@ One CSV per reference, `reference/<db>/contig_manifest.csv`, one row per record 
 | `md5` | ORIGIN, upper-cased sequence | the VCF `##contig` `md5=` convention; lets a database match a contig regardless of its local name |
 | `type` | `/organelle` → `mitochondrion` (or the qualifier's value), `/plasmid` → `plasmid`, `/chromosome` → `chromosome`, else `other` | the only Mito signal the dashboard uses (§5.4) |
 | `chromosome` | `/chromosome` qualifier | empty on lab drafts, scaffolds, single-record bacteria; informational |
+| `transl_table` | the CDS `/transl_table` of the record | `3`, `11`, …; `1` when none is stated (INSDC default); `1 (assumed)` on an organelle contig without one (the WARN of §5.5); empty for a record without CDS |
 | `order` | record index | the order every table follows (§5.6) |
 
 Plus a header comment with the GenBank file name and its sha256. This is the reference record a future ALEdb
@@ -302,8 +323,10 @@ registration keys on (§3.3).
 
 1. **Protein check `Errors: 0`** from `snpEff build -genbank` (`Not found` entries are allowed). Catches broken
    gene models and a missing codon-table line in one number.
-2. **Cache contig names equal the FASTA headers.** `snpEff dump -bed` lists the cache's contigs; the set must
-   equal the set of FASTA headers, exactly. This is the silent-failure case of §3.2 turned into a stop.
+2. **Cache contig names equal the expected list.** `snpEff dump -bed` lists the cache's contigs; the set must
+   equal the list the extract task derives from the same records: the FASTA headers after snpEff's name
+   simplification (decision 19), minus records without any feature. This is the silent-failure case of §3.2
+   turned into a stop; it also pins our model of snpEff's naming, which is what O.2 got wrong first.
 
 Either failing stops the run with a readable message before alignment.
 
@@ -326,13 +349,21 @@ two identical), written by the extract task from the manifest, so it runs under 
 - **OK** when every record has a versioned accession (VERSION present and different from LOCUS).
 - **WARN** listing the records without one (VERSION empty or equal to LOCUS), with the note that a database
   registration will have to match by sequence md5. A lab draft is a legitimate input, so this is not an error.
-- **ERROR** when two records resolve to the same identifier, or an identifier contains a colon, pipe or
+- **ERROR** when two records resolve to the same identifier (also after snpEff's simplification, decision 19),
+  or an identifier contains a colon, pipe or
   whitespace. Those break the SV mate parser (`sv_cohort_matrix.py`), the IGV cross-links
   (`custom_template_sample.html`) and samtools region strings, so the run stops. Dots are safe everywhere
   (checked 2026-11-02 across `bin/`, the report code and the interval logic); the one hazard is
   `intervals.simpleName` in four configs, which cuts at the first dot and could collide two interval chunks of
   one contig under a user BED. Whole-contig intervals built from the `.fai` never collide. A one-line
   `baseName` fix belongs in the same series.
+
+A second row, *GenBank genetic code* (decision 18): **OK** listing the non-standard contigs and their snpEff
+table names; **WARN** for an organelle contig whose CDS state no `/transl_table` (standard assumed, with the
+instruction to add the qualifier and rerun); **ERROR** when one contig's CDS state different tables or a
+table snpEff 5.1 has no name for. The build task adds two rows of its own, *snpEff build: protein check*
+(OK / SKIPPED without `/translation` / ERROR) and *snpEff build: contig names* (§5.3). All four share the
+table id and header of `PREFLIGHT_REFERENCE`; keep the copies identical.
 
 ### 5.6 Contig order: the GenBank's record order, everywhere
 

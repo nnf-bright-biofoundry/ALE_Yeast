@@ -1,0 +1,62 @@
+name: snpeff_build
+description: Build a SnpEff database from a GenBank file, with a protein check and a contig-name check as gates
+keywords:
+  - annotation
+  - database
+  - genbank
+  - snpeff
+tools:
+  - snpeff:
+      description: |
+        SnpEff is a variant annotation and effect prediction tool.
+        It annotates and predicts the effects of genetic variants on genes and proteins (such as amino acid changes).
+      homepage: https://pcingola.github.io/SnpEff/
+      documentation: https://pcingola.github.io/SnpEff/se_build_db/
+      licence: ["MIT"]
+      identifier: biotools:snpeff
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map with the database name, e.g. [ id:'R64-1-1' ]; `id` is the database name and the cache directory name
+    - genome_dir:
+        type: directory
+        description: |
+          Directory named after the database holding `genes.gbk` (the GenBank, gzipped or not) and the per-genome
+          `snpEff.config` with the `<db>.genome` line and one `<db>.<contig>.codonTable` line per contig whose
+          genetic code is not the standard one (snpEff does not read /transl_table from the GenBank)
+        pattern: "*/{genes.gbk,genes.gbk.gz,snpEff.config}"
+  - - expected_contigs:
+        type: file
+        description: |
+          Optional: the contig names the cache must contain, one per line, as snpEff stores them (it strips a
+          leading chr/chromo/chromosome and leading zeros). An empty list skips the check.
+        pattern: "*.txt"
+output:
+  - cache:
+      - meta:
+          type: map
+          description: the input map
+      - snpeff_cache:
+          type: directory
+          description: |
+            `snpeff_cache/<db>/` with `snpEffectPredictor.bin`, `sequence*.bin` and `snpEff.config`, the layout
+            the snpeff/snpeff module takes as `-dataDir`; the GenBank copy is removed after the build
+          pattern: "snpeff_cache"
+  - log:
+      - "*.snpeff_build.log":
+          type: file
+          description: snpEff's verbose build log, including the protein check
+          pattern: "*.snpeff_build.log"
+  - mqc:
+      - snpeff_build_mqc.tsv:
+          type: file
+          description: the two gates as rows of a MultiQC custom-content table
+          pattern: "snpeff_build_mqc.tsv"
+  - versions:
+      - versions.yml:
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+authors:
+  - "yAMP (nnf-bright-biofoundry/ALE_Yeast)"

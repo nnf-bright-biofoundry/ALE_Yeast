@@ -1,0 +1,259 @@
+nextflow_process {
+
+    name "GENBANK_REFERENCE unit"
+    script "../modules/local/genbank_reference/main.nf"
+    process "GENBANK_REFERENCE"
+    tag "ottilie"
+    tag "module"
+
+    // Run with: nf-test test -c tests/nf-test-ottilie.config tests/genbank_reference.nf.test
+    //
+    // Unit test for the extract task of the GenBank reference route (bin/genbank_to_reference.py in the
+    // BioPython container). Contract (docs/dev-practices/genbank_reference_input.md §5): from one
+    // GenBank, the FASTA and the report GFF3 with LOCUS names in record order; the contig manifest;
+    // the per-genome snpEff.config with the .genome line plus one codonTable line per contig whose
+    // /transl_table is not 1 (snpEff never reads the qualifier itself); the snpEff input copy with
+    // VERSION := LOCUS (snpEff names contigs from VERSION, then /chromosome, then LOCUS); the names
+    // snpEff will store (it strips a leading chr/chromo/chromosome and leading zeros, measured
+    // 2026-11-02); two verdict rows of the "yAMP input checks" table, console lines only for WARN and
+    // ERROR, exit 65 on ERROR so the config stops the run.
+    //
+    // Fixtures (tests/fixtures/genbank/, README there): mito_ncbi.gbff is the real NC_001224 record
+    // (VERSION NC_001224.1, /organelle, 19 CDS with /transl_table=3, 11 of them joined over introns),
+    // mito_ncbi.gbff.gz its gzip; mito_draft.gb a lab-style copy (LOCUS mito_draft, no ACCESSION or
+    // VERSION, /chromosome="M", no /transl_table and no /translation); the synthetic_*.gb files are
+    // written by make_fixtures.py: two records with hand-computable CDS phases, a duplicate LOCUS, mixed
+    // tables on one contig, and a chr1 / 1 name collision.
+
+    def FX       = "\$projectDir/tests/fixtures/genbank"
+    def rows     = { mqc -> path(mqc).readLines().findAll { !it.startsWith('#') } }
+    def verdicts = { lines -> lines.findAll { it.contains('[yAMP preflight]') } }
+    def gffBody  = { gff -> path(gff).readLines().findAll { !it.startsWith('#') } }
+    def manifest = { csv -> path(csv).readLines().findAll { !it.startsWith('#') } }
+
+    test("NCBI record: OK rows, LOCUS names everywhere, codonTable line, VERSION rewritten, GFF3 with introns and phases") {
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = file("$FX/mito_ncbi.gbff")
+                input[1] = 'mito'
+                """
+            }
+        }
+        then {
+            def table = rows(process.out.mqc[0])
+            def fa    = path(process.out.fasta[0]).readLines()
+            def gff   = gffBody(process.out.gff3[0])
+            def man   = manifest(process.out.manifest[0])
+            def dir   = process.out.snpeff_input[0][1]
+            def gbk   = path("${dir}/genes.gbk").readLines()
+            def cox2  = gff.findAll { it.contains('Q0250') || it.contains('NP_009326.1') }
+            assertAll(
+                { assert process.success },
+                { assert verdicts(process.stdout) == [] },
+                { assert table.size() == 3 },
+                { assert table[1] == 'GenBank contig identifiers\tOK\tmito_ncbi.gbff: 1 record(s), every one with a versioned accession; contig names are the LOCUS names (NC_001224)' },
+                { assert table[2] == 'GenBank genetic code\tOK\tmito_ncbi.gbff: NC_001224=3 (Yeast_Mitochondrial); 0 contig(s) standard' },
+                // FASTA: the LOCUS name, 85,779 bases in 60-column lines
+                { assert fa[0] == '>NC_001224' },
+                { assert fa.drop(1).sum { it.size() } == 85779 },
+                { assert fa.size() == 1 + 1430 },
+                // manifest: VERSION kept as the accession, md5 of the upper-cased sequence, type from /organelle, table 3
+                { assert man[0] == 'contig,version,length,md5,type,chromosome,transl_table,order' },
+                { assert man[1] == 'NC_001224,NC_001224.1,85779,71c39cf065b8d574f636b654c274cf1b,mitochondrion,,3,1' },
+                { assert path(process.out.manifest[0]).readLines()[0] == '# genbank: mito_ncbi.gbff' },
+                { assert path(process.out.manifest[0]).readLines()[1] ==~ /# sha256: [0-9a-f]{64}/ },
+                // per-genome config: genome line + the codon-table line keyed on LOCUS
+                { assert path("${dir}/snpEff.config").readLines() == [ 'mito.genome : mito', 'mito.NC_001224.codonTable : Yeast_Mitochondrial' ] },
+                // the snpEff copy: VERSION rewritten to the LOCUS name, ACCESSION untouched, same record count
+                { assert gbk.find { it.startsWith('VERSION') } == 'VERSION     NC_001224' },
+                { assert gbk.find { it.startsWith('ACCESSION') } == 'ACCESSION   NC_001224' },
+                { assert gbk.count { it == '//' } == 1 },
+                // the name snpEff will store
+                { assert path(process.out.expected_contigs[0]).readLines() == [ 'NC_001224' ] },
+                // GFF3: 46 genes, 19 CDS features as mRNA + exon/CDS parts (11 joined CDS -> 50 parts)
+                { assert gff.count { it.split('\t')[2] == 'gene' } == 46 },
+                { assert gff.count { it.split('\t')[2] == 'mRNA' } == 19 },
+                { assert gff.count { it.split('\t')[2] == 'exon' } == 50 },
+                { assert gff.count { it.split('\t')[2] == 'CDS'  } == 50 },
+                { assert gff.every { it.startsWith('NC_001224\tgenbank\t') } },
+                { assert cox2.contains('NC_001224\tgenbank\tgene\t73758\t74513\t.\t+\t.\tID=Q0250;Name=COX2;locus_tag=Q0250') },
+                { assert cox2.contains('NC_001224\tgenbank\tmRNA\t73758\t74513\t.\t+\t.\tID=NP_009326.1;Parent=Q0250;Name=COX2') },
+                { assert cox2.contains('NC_001224\tgenbank\tCDS\t73758\t74513\t.\t+\t0\tID=NP_009326.1-CDS;Parent=NP_009326.1') },
+                { assert path(process.out.versions[0]).text.contains('biopython: 1.81') },
+            )
+        }
+    }
+
+    test("gzipped input: same FASTA, manifest and config as the plain file") {
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = file("$FX/mito_ncbi.gbff.gz")
+                input[1] = 'mito'
+                """
+            }
+        }
+        then {
+            def dir = process.out.snpeff_input[0][1]
+            assertAll(
+                { assert process.success },
+                { assert verdicts(process.stdout) == [] },
+                { assert path(process.out.fasta[0]).readLines()[0] == '>NC_001224' },
+                { assert path(process.out.fasta[0]).readLines().drop(1).sum { it.size() } == 85779 },
+                { assert manifest(process.out.manifest[0])[1] == 'NC_001224,NC_001224.1,85779,71c39cf065b8d574f636b654c274cf1b,mitochondrion,,3,1' },
+                { assert path("${dir}/snpEff.config").readLines()[1] == 'mito.NC_001224.codonTable : Yeast_Mitochondrial' },
+                { assert path("${dir}/genes.gbk").readLines().find { it.startsWith('VERSION') } == 'VERSION     NC_001224' },
+            )
+        }
+    }
+
+    test("lab-style draft (no VERSION, /chromosome=M, no /transl_table): two WARN rows, VERSION inserted, standard code assumed, run proceeds") {
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = file("$FX/mito_draft.gb")
+                input[1] = 'draft'
+                """
+            }
+        }
+        then {
+            def table = rows(process.out.mqc[0])
+            def dir   = process.out.snpeff_input[0][1]
+            def gbk   = path("${dir}/genes.gbk").readLines()
+            def out   = verdicts(process.stdout)
+            assertAll(
+                { assert process.success },
+                { assert table.size() == 3 },
+                { assert table[1].startsWith('GenBank contig identifiers\tWARN\tmito_draft.gb: 1 of 1 record(s) carry no versioned accession (VERSION missing or equal to LOCUS): mito_draft.') },
+                { assert table[2].startsWith('GenBank genetic code\tWARN\tmito_draft.gb: organelle contig(s) whose CDS state no /transl_table: mito_draft. The standard code is assumed, which organelles rarely use') },
+                { assert table[2].contains('Add /transl_table=N to the CDS features and rerun') },
+                { assert out.size() == 2 },
+                { assert out[0].startsWith('[yAMP preflight] WARN  GenBank contig identifiers:') },
+                { assert out[1].startsWith('[yAMP preflight] WARN  GenBank genetic code:') },
+                // VERSION inserted right after LOCUS (no ACCESSION in the file): snpEff takes it before /chromosome
+                { assert gbk[0].startsWith('LOCUS       mito_draft') },
+                { assert gbk[1] == 'VERSION     mito_draft' },
+                { assert gbk.find { it.contains('/chromosome="M"') } != null },
+                { assert path(process.out.fasta[0]).readLines()[0] == '>mito_draft' },
+                { assert manifest(process.out.manifest[0])[1] == 'mito_draft,,85779,71c39cf065b8d574f636b654c274cf1b,mitochondrion,M,1 (assumed),1' },
+                { assert path("${dir}/snpEff.config").readLines() == [ 'draft.genome : draft' ] },
+                { assert path(process.out.expected_contigs[0]).readLines() == [ 'mito_draft' ] },
+            )
+        }
+    }
+
+    test("two synthetic records: plasmid on table 11, chromosome on the INSDC default, chrB stored as B, CDS phases on both strands") {
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = file("$FX/synthetic_two_records.gb")
+                input[1] = 'syn'
+                """
+            }
+        }
+        then {
+            def table = rows(process.out.mqc[0])
+            def gff   = gffBody(process.out.gff3[0])
+            def man   = manifest(process.out.manifest[0])
+            def dir   = process.out.snpeff_input[0][1]
+            assertAll(
+                { assert process.success },
+                { assert table[1].contains('2 of 2 record(s) carry no versioned accession') },
+                { assert table[1].endsWith('snpEff stores 1 name(s) simplified (chrB as B); VCFs, tables and reports keep the LOCUS name') },
+                { assert table[2] == 'GenBank genetic code\tOK\tsynthetic_two_records.gb: plasmidA=11 (Bacterial_and_Plant_Plastid); 1 contig(s) standard (1 by the INSDC default, no /transl_table)' },
+                { assert path(process.out.fasta[0]).readLines().findAll { it.startsWith('>') } == [ '>plasmidA', '>chrB' ] },
+                { assert man[1].startsWith('plasmidA,,2400,') && man[1].endsWith(',plasmid,,11,1') },
+                { assert man[2].startsWith('chrB,,1500,')     && man[2].endsWith(',chromosome,B,1,2') },
+                { assert path("${dir}/snpEff.config").readLines() == [ 'syn.genome : syn', 'syn.plasmidA.codonTable : Bacterial_and_Plant_Plastid' ] },
+                { assert path(process.out.expected_contigs[0]).readLines() == [ 'plasmidA', 'B' ] },
+                // the GFF3, line by line: + strand single exon; - strand two exons (199 + 200 bp, second part phase 2);
+                // codon_start=2 -> phase 1; the chrB gene
+                { assert gff == [
+                    'plasmidA\tgenbank\tgene\t101\t400\t.\t+\t.\tID=TST_001;Name=tstA;locus_tag=TST_001',
+                    'plasmidA\tgenbank\tgene\t1001\t1459\t.\t-\t.\tID=TST_002;Name=tstB;locus_tag=TST_002',
+                    'plasmidA\tgenbank\tgene\t1801\t2101\t.\t+\t.\tID=TST_003;Name=tstC;locus_tag=TST_003',
+                    'plasmidA\tgenbank\tmRNA\t101\t400\t.\t+\t.\tID=TST_001_mRNA;Parent=TST_001;Name=tstA',
+                    'plasmidA\tgenbank\texon\t101\t400\t.\t+\t.\tID=TST_001_mRNA-E1;Parent=TST_001_mRNA',
+                    'plasmidA\tgenbank\tCDS\t101\t400\t.\t+\t0\tID=TST_001_mRNA-CDS;Parent=TST_001_mRNA',
+                    'plasmidA\tgenbank\tmRNA\t1001\t1459\t.\t-\t.\tID=TST_002_mRNA;Parent=TST_002;Name=tstB',
+                    'plasmidA\tgenbank\texon\t1261\t1459\t.\t-\t.\tID=TST_002_mRNA-E1;Parent=TST_002_mRNA',
+                    'plasmidA\tgenbank\tCDS\t1261\t1459\t.\t-\t0\tID=TST_002_mRNA-CDS;Parent=TST_002_mRNA',
+                    'plasmidA\tgenbank\texon\t1001\t1200\t.\t-\t.\tID=TST_002_mRNA-E2;Parent=TST_002_mRNA',
+                    'plasmidA\tgenbank\tCDS\t1001\t1200\t.\t-\t2\tID=TST_002_mRNA-CDS;Parent=TST_002_mRNA',
+                    'plasmidA\tgenbank\tmRNA\t1801\t2101\t.\t+\t.\tID=TST_003_mRNA;Parent=TST_003;Name=tstC',
+                    'plasmidA\tgenbank\texon\t1801\t2101\t.\t+\t.\tID=TST_003_mRNA-E1;Parent=TST_003_mRNA',
+                    'plasmidA\tgenbank\tCDS\t1801\t2101\t.\t+\t1\tID=TST_003_mRNA-CDS;Parent=TST_003_mRNA',
+                    'chrB\tgenbank\tgene\t201\t650\t.\t+\t.\tID=TST_004;Name=tstD;locus_tag=TST_004',
+                    'chrB\tgenbank\tmRNA\t201\t650\t.\t+\t.\tID=TST_004_mRNA;Parent=TST_004;Name=tstD',
+                    'chrB\tgenbank\texon\t201\t650\t.\t+\t.\tID=TST_004_mRNA-E1;Parent=TST_004_mRNA',
+                    'chrB\tgenbank\tCDS\t201\t650\t.\t+\t0\tID=TST_004_mRNA-CDS;Parent=TST_004_mRNA',
+                ] },
+            )
+        }
+    }
+
+    test("duplicate LOCUS: ERROR on the console, exit 65, task fails") {
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = file("$FX/synthetic_duplicate_locus.gb")
+                input[1] = 'dup'
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.failed },
+                { assert process.errorReport.contains('terminated with an error exit status (65)') },
+                { assert (process.stdout + process.errorReport.readLines()).any {
+                    it.contains('[yAMP preflight] ERROR GenBank contig identifiers: synthetic_duplicate_locus.gb: duplicate LOCUS name(s): plasmidA.') } },
+            )
+        }
+    }
+
+    test("mixed /transl_table on one contig: ERROR, exit 65") {
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = file("$FX/synthetic_mixed_tables.gb")
+                input[1] = 'mix'
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.failed },
+                { assert process.errorReport.contains('terminated with an error exit status (65)') },
+                { assert (process.stdout + process.errorReport.readLines()).any {
+                    it.contains('[yAMP preflight] ERROR GenBank genetic code: synthetic_mixed_tables.gb: contig(s) whose CDS state different /transl_table values: plasmidA (4, 11).') } },
+            )
+        }
+    }
+
+    test("LOCUS chr1 and 1 (one snpEff name): ERROR, exit 65") {
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = file("$FX/synthetic_name_collision.gb")
+                input[1] = 'col'
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.failed },
+                { assert process.errorReport.contains('terminated with an error exit status (65)') },
+                { assert (process.stdout + process.errorReport.readLines()).any {
+                    it.contains('LOCUS names snpEff would store under one simplified name (it strips a leading chr/chromo/chromosome and leading zeros): 1 and chr1') } },
+            )
+        }
+    }
+}
