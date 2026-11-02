@@ -90,6 +90,11 @@ Full project history lives in `git log` and `CHANGELOG.md`; resolved items are s
 
 ## CNV — Control-FREEC (Tier 2) / CNVKit
 
+- **[low] CNVKit's sex-chromosome heuristic keys on the literal names `X`/`chrX`** (measured 2026-11-02,
+  `cnvkit_sex_chromosome_heuristic.md`): under roman names yeast chr X is the "sex chromosome", and a real
+  loss of it reads as a male sample in the diagram PDF and the CNVKit VCF export; `.cnr`/`.cns` and the
+  fold-change matrices are untouched. Moot under GenBank LOCUS names. If ever needed: `--sample-sex female` in
+  `ext.args`. Not measurable on the 4-chromosome test set; check on the next full-genome pilot.
 - **[low] Control-FREEC yeast `cf_window` tuning.** `nextflow.config` sets `cf_window = null` (auto). Tune
   `window` / `breakpointthreshold` for small yeast chromosomes. Coupled with the ploidy=1 item below.
 - ~~**[low] Investigate ASSESS_SIGNIFICANCE skip for ploidy=1.**~~ **Moot 2026-09-09:** the Control-FREEC
@@ -540,6 +545,9 @@ Full project history lives in `git log` and `CHANGELOG.md`; resolved items are s
 
 ### igvreports dashboard follow-ups (migrated from the igvreports reporting plan, 2026-07)
 
+- **[low] User-adjustable chromosome order in the index tables** (user request 2026-11-02, cosmetic). The
+  tables and CSVs follow the reference's record order (`genbank_reference_input.md` §5.6); a per-page order
+  override, for viewing only, would sit in the template context. Flag when next reviewing `index.html`.
 - **[low] (igvreports reporting plan) Shared template extraction.** Factor shared CSS/JS (theme system,
   Tabulator config, badge definitions) out of the IGV dashboard and Marko SV report into a reusable partial
   (Jinja `{% include %}` or a standalone `dashboard_base.css`/`.js`). Only worthwhile if a third dashboard
@@ -617,7 +625,10 @@ pipeline; none is about the transport.
   snapshot should be unchanged). Acceptance: a Launchpad launch with an EMPTY params box picks up the
   profile's `snpeff_cache`; `nextflow run … --tools snpeff` without a cache fails at launch with that
   message.
-- **[med] Standalone SnpEff cache builder, then plug in.** `build_snpeff_cache.nf` beside
+- ~~**[med] Standalone SnpEff cache builder, then plug in.**~~ **Superseded 2026-11-02:** the build runs
+  inside the pipeline from `--genbank` (two tasks before alignment, `--build_only_index` as the standalone
+  mode), so no separate workflow; the acceptance tests below carried over as the two build gates. Design
+  `genbank_reference_input.md` §5, task `PLAN_next_checklist.md` §O. Was: `build_snpeff_cache.nf` beside
   `generate_mutation_report.nf`: FASTA + GFF3 or GenBank in, versioned tarball out (consumed by the
   tarball item above), same `snpeff:5.1` container. Acceptance tests: chromosome-name overlap between
   FASTA and annotation (sarek #415 — silent empty output otherwise), CDS/protein check from derived
@@ -637,7 +648,11 @@ pipeline; none is about the transport.
   tolerable for a near-intronless yeast, wrong for an intron-rich genome. Fix (either): emit
   gene/mRNA/exon/CDS with `Parent` and phase from the location parts (BioPython `CompoundLocation`) and
   `Name` from `/gene`; or let snpEff read the GenBank directly (`snpEff build -genbank`), which is what
-  the standalone builder above should do, retiring the converter.
+  the standalone builder above should do, retiring the converter. **Measured 2026-10-29**: the direct build
+  wins on every count, and two more requirements surfaced (snpEff names contigs from VERSION, `/transl_table`
+  ignored); design note `genbank_reference_input.md`, task `PLAN_next_checklist.md` §O. **Decided 2026-11-02**:
+  LOCUS is the contig identifier (breseq and ALEdb already use it), no display alias, the builder rewrites
+  VERSION in the copy it hands snpEff, a contig manifest is always published; the 17 decisions are §0 of the note.
 - **[med] Freeze and mirror the published test data.** `publish_test_data.sh` republishes `ottilie/v1`
   in place; bump the prefix on any change (SHA256SUMS already covers it). The host is one institution's
   account with 7-day soft delete — add a DOI'd mirror (Zenodo, free, versioned) and document
@@ -682,7 +697,9 @@ launch form renders. Mark advanced/Tier-2 params `"hidden": true` (already done 
   - **SHOWN in schema:** `generate_reports` (in `variant_calling`, next to the other ALE toggles;
     default `true`); `report_gff3` (in `reference_genome_options`, next to `genbank` — per-genome
     annotation *file* for the report gene track; help_text notes the report purpose).
-  - **`genbank` → flip `hidden: true`** — breseq-only (Tier-2), keep out of the Tier-1 form.
+  - **`genbank` → flip `hidden: true`** — breseq-only (Tier-2), keep out of the Tier-1 form. *(Reversed
+    2026-11-02: `genbank` becomes the Tier-1 reference input and the one visible reference field;
+    `genbank_reference_input.md` §6.)*
   - **`validation.defaultIgnoreParams` +=** `report_container`, `report_outdir`, `report_filter_config`,
     `report_cohort_template`, `report_sample_template`, `report_index_script`, `report_templates_dir`
     (out of UI, no WARN).

@@ -466,7 +466,9 @@ ratio). **Caveat**: CNVKit's integer `cn` always uses `cn=2` as baseline regardl
 so use `fold_change`/`log2` for the true signal. **Second caveat**: `cnvkit.py fix` drops every bin
 outside 0.30–0.70 GC (hard-coded, no override) — the whole mitochondrial contig (~17 % GC) is
 therefore absent from ALL CNVKit output; read Mito from the TIDDIT contig copy-number table instead
-([`cnvkit_gc_bin_mask.md`](docs/variant-calling/cnvkit/cnvkit_gc_bin_mask.md)). Details:
+([`cnvkit_gc_bin_mask.md`](docs/variant-calling/cnvkit/cnvkit_gc_bin_mask.md)). **Third caveat**: CNVKit
+treats a contig literally named `X`/`chrX` as the sex chromosome; only the diagram PDF and the CNVKit VCF export
+see the guess, never `.cnr`/`.cns` or the matrices ([`cnvkit_sex_chromosome_heuristic.md`](docs/variant-calling/cnvkit/cnvkit_sex_chromosome_heuristic.md)). Details:
 [`docs/variant-calling/cnvkit/`](docs/variant-calling/cnvkit/).
 
 ### VCFtools Compatibility
