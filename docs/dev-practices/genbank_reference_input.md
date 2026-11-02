@@ -1,6 +1,6 @@
 # Reference genome from one GenBank file: design note
 
-**Status: design agreed 2026-11-02, nothing implemented.** Opened 2026-10-29 from a question about why
+**Status: design agreed 2026-11-02; O.1 (the codon-table line in today's caches, §4.3) done the same day, the rest not implemented.** Opened 2026-10-29 from a question about why
 the pipeline takes FASTA + SnpEff cache where the legacy AMP v1 pipeline took a single GenBank; reviewed
 decision by decision on 2026-11-02 with the launch form and a future ALEdb registration in view. Every
 number here was measured with the pipeline's own snpEff image (`quay.io/biocontainers/snpeff:5.1--hdfd78af_2`)
@@ -240,11 +240,24 @@ assignment is NCBI's naming, the snpEff names are what the file lists):
 - Under the §13 rule (`testing_best_practices.md`) this is a provenance event for any mitochondrial variant
   already quoted from a pilot; nuclear annotations are unaffected.
 
+**Done 2026-11-02 (plan §O.1):** the line is in both local caches (`S288C_reference` and `S288C_reference_test`,
+which are the same cache; parent and per-genome config); `build_snpeff_cache.sh` takes
+`CODON_TABLES=contig=Table,...`, validated against the image's `codon.<Table>` list before the build and
+appended after it, because a `codonTable` line in the build's `-c` replacement config triggers the
+`No such codon table` stop described above (the bins do not depend on the line: rebuilt with the variable,
+all four files equal the shipped cache). `04_validate/README.md` carries the provenance note; the only
+mitochondrial site in the pilot results, `Mito:53278`, is intergenic. The `ottilie/v1` blob caches wait
+for O.8, so cloud runs keep the standard code on Mito until then.
+
 ### 4.4 Unit test to carry along
 
 The synthetic COX2 variant of §4.2 is the test: one VCF line, annotate with the cache under test using
 `-dataDir` only, expect `synonymous_variant` and `p.Trp56Trp`. It fails on any cache that lost the line and on
 any snpEff upgrade that changes where the config is read. It runs in seconds in the snpEff container.
+Implemented 2026-11-02 as `tests/snpeff_codon_table.nf.test` (3 cases, ~85 s): the shipped cache through the
+pipeline's own module and config, plus a committed 25 KB Mito-only cache with and without the line, the
+latter the negative control (`stop_lost p.Ter56Trpext*?`), so the mechanism is tested on a fresh clone and
+the shipped artefact on the dev machine.
 
 ## 5. The build, end to end
 

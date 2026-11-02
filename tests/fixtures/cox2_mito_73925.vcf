@@ -1,0 +1,4 @@
+##fileformat=VCFv4.2
+##contig=<ID=Mito,length=85779>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+Mito	73925	.	A	G	50	PASS	.

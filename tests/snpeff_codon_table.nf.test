@@ -1,0 +1,105 @@
+nextflow_process {
+
+    name "SNPEFF_SNPEFF reads the per-genome codonTable line (mitochondrial genetic code)"
+    script "../modules/nf-core/snpeff/snpeff/main.nf"
+    process "SNPEFF_SNPEFF"
+    tag "ottilie"
+    tag "process"
+
+    // Run with: nf-test test -c tests/nf-test-ottilie.config tests/snpeff_codon_table.nf.test
+    //
+    // snpEff ignores the GenBank /transl_table qualifier and keeps no genetic code inside a built
+    // database: the code is a configuration property per contig, `<db>.<contig>.codonTable : <name>`,
+    // read at annotation time from the per-genome config `<dataDir>/<db>/snpEff.config` (measured
+    // 2026-11-02, docs/dev-practices/genbank_reference_input.md §4.2). Without the line every mito
+    // gene is translated with the standard code, so a synonymous change at a TGA (Trp in yeast mito,
+    // stop in the standard code) is reported as stop_lost. The failure is silent: a well-formed
+    // annotated VCF, no warning. The e2e cannot see it (the test set has no Mito contig), so this test
+    // runs the module for real on a one-record VCF and pins the effect and the protein change.
+    //
+    // The variant: Mito:73925 A>G, third base of the first in-frame TGA of COX2 (Q0250, CDS 73758..74513,
+    // + strand, no intron). Yeast_Mitochondrial: TGA>TGG, Trp56Trp, synonymous. Standard: Ter56Trp,
+    // stop_lost. Fixture tests/fixtures/cox2_mito_73925.vcf.
+    //
+    // Three cases: (1) the cache the pipeline ships (params.snpeff_cache of the ottilie profile,
+    // data/ottilie/), which must carry the line; (2) a committed Mito-only cache WITH the line and
+    // (3) the same cache WITHOUT it, the negative control that measures what the main case is
+    // sensitive to (tests/fixtures/snpeff_cache_mito/, runtime files only, 25 KB each; recipe in
+    // tests/fixtures/README.md). Cases 2 and 3 need no data/ottilie/.
+    //
+    // Selector: the module runs here under its own name SNPEFF_SNPEFF, which is also the pipeline's,
+    // so conf/modules/annotate.config applies (-nodownload -canon -v; ext.prefix) because the ottilie
+    // profile's `tools` contains snpeff. The ext.prefix assertion pins that the config was read.
+
+    def FIX = "\$projectDir/tests/fixtures"
+
+    // First ANN entry of the one record: [effect, impact, gene, HGVS.c, HGVS.p]
+    def firstAnn = { vcfPath ->
+        def rec = path(vcfPath).text.readLines().find { !it.startsWith('#') }
+        def ann = rec.split('\t')[7].split(';').find { it.startsWith('ANN=') }.substring(4).split(',')[0].split('\\|', -1)
+        [ effect: ann[1], impact: ann[2], gene: ann[3], hgvs_c: ann[9], hgvs_p: ann[10] ]
+    }
+
+    test("shipped cache (ottilie profile): Mito:73925 A>G is synonymous p.Trp56Trp") {
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = [ [ id:'cox2', variantcaller:'haplotypecaller' ], file("${FIX}/cox2_mito_73925.vcf") ]
+                input[1] = params.snpeff_db
+                input[2] = [ [ id: params.snpeff_db ], file(params.snpeff_cache) ]
+                """
+            }
+        }
+        then {
+            def vcf = process.out.vcf[0][1]
+            def a   = firstAnn(vcf)
+            assertAll(
+                { assert process.success },
+                { assert vcf.endsWith('/cox2_mito_73925_snpEff.ann.vcf') },          // ext.prefix of annotate.config applied
+                { assert a == [ effect: 'synonymous_variant', impact: 'LOW', gene: 'COX2', hgvs_c: 'c.168A>G', hgvs_p: 'p.Trp56Trp' ] },
+                { assert path(process.out.versions[0]).text.contains('snpeff: 5.1') },
+            )
+        }
+    }
+
+    test("fixture cache with the codonTable line: synonymous p.Trp56Trp") {
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = [ [ id:'cox2', variantcaller:'haplotypecaller' ], file("${FIX}/cox2_mito_73925.vcf") ]
+                input[1] = 'S288C_mito'
+                input[2] = [ [ id:'S288C_mito' ], file("${FIX}/snpeff_cache_mito/with_codon_table") ]
+                """
+            }
+        }
+        then {
+            def a = firstAnn(process.out.vcf[0][1])
+            assertAll(
+                { assert process.success },
+                { assert a == [ effect: 'synonymous_variant', impact: 'LOW', gene: 'COX2', hgvs_c: 'c.168A>G', hgvs_p: 'p.Trp56Trp' ] },
+            )
+        }
+    }
+
+    test("negative control, same cache without the line: stop_lost p.Ter56Trpext*? (the standard code)") {
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = [ [ id:'cox2', variantcaller:'haplotypecaller' ], file("${FIX}/cox2_mito_73925.vcf") ]
+                input[1] = 'S288C_mito'
+                input[2] = [ [ id:'S288C_mito' ], file("${FIX}/snpeff_cache_mito/without_codon_table") ]
+                """
+            }
+        }
+        then {
+            def a = firstAnn(process.out.vcf[0][1])
+            assertAll(
+                { assert process.success },
+                { assert a == [ effect: 'stop_lost', impact: 'HIGH', gene: 'COX2', hgvs_c: 'c.168A>G', hgvs_p: 'p.Ter56Trpext*?' ] },
+            )
+        }
+    }
+}

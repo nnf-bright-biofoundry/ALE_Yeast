@@ -650,7 +650,7 @@ pipeline; none is about the transport.
   `Name` from `/gene`; or let snpEff read the GenBank directly (`snpEff build -genbank`), which is what
   the standalone builder above should do, retiring the converter. **Measured 2026-10-29**: the direct build
   wins on every count, and two more requirements surfaced (snpEff names contigs from VERSION, `/transl_table`
-  ignored); design note `genbank_reference_input.md`, task `PLAN_next_checklist.md` §O. **Decided 2026-11-02**:
+  ignored; the shipped caches got their `codonTable` line on 2026-11-02, §O.1, test `tests/snpeff_codon_table.nf.test`); design note `genbank_reference_input.md`, task `PLAN_next_checklist.md` §O. **Decided 2026-11-02**:
   LOCUS is the contig identifier (breseq and ALEdb already use it), no display alias, the builder rewrites
   VERSION in the copy it hands snpEff, a contig manifest is always published; the 17 decisions are §0 of the note.
 - **[med] Freeze and mirror the published test data.** `publish_test_data.sh` republishes `ottilie/v1`

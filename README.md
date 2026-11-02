@@ -239,7 +239,10 @@ bash docs/prepare_input/build_snpeff_cache.sh <snpeff_db> <reference.fa> <annota
 ```
 
 It checks that contig names match, strips the Ensembl ID prefixes that break snpEff's gene models, and
-prints the parameters to use. Verified to reproduce the project's own S288C cache byte for byte.
+prints the parameters to use. Verified to reproduce the project's own S288C cache byte for byte. Name the
+genetic code of any contig that does not use the standard one with `CODON_TABLES=contig=Table` (yeast:
+`CODON_TABLES=Mito=Yeast_Mitochondrial`): snpEff does not read it from the annotation, and without the
+line mitochondrial variants are translated with the standard code (see the page above).
 
 ### Running the SnpEff cache from cloud storage
 

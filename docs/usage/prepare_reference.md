@@ -30,6 +30,7 @@ Rules that apply to the SnpEff cache whichever way you build it:
   noted, see [`preflight_checks.md`](preflight_checks.md)); the cache itself is **not** checked at start-up.
 - **Runtime files only are needed**: `snpEffectPredictor.bin`, `sequence*.bin`, `snpEff.config` (~6 MB
   for yeast). `genes.gff` and `sequences.fa` are build inputs and may be left out of what you ship.
+  `snpEff.config` is not a formality: it carries the genetic code per contig (see *Genetic code* below).
 - **Running from cloud storage** (Seqera, AWS Batch, HPC): upload the directory to your own bucket and
   pass the `az://` / `s3://` / `gs://` path; see the README section *Running the SnpEff cache from cloud
   storage*. An https URL cannot be used for a directory.
@@ -59,13 +60,15 @@ other 8 are frame and feature-type artefacts of the flat conversion: tRNAs writt
 no phase); and
 reports show systematic names (`YDL140C`) where the Ensembl cache shows gene symbols (`RPO21`). Tolerable
 for a nearly intronless yeast, wrong for an intron-rich genome. If your GenBank comes from an Ensembl or
-NCBI genome that also has a GFF3, prefer Path B.
+NCBI genome that also has a GFF3, prefer Path B. Path A also writes no `codonTable` line, although the
+GenBank's `/transl_table` says which contigs need one: append it by hand (see *Genetic code* under Path B).
 
 ## Path B: from FASTA + GFF3 (Ensembl, NCBI, or your own annotation)
 
 ```bash
 bash docs/prepare_input/build_snpeff_cache.sh <snpeff_db> <reference.fa> <annotation.gff3> [out_dir] [genome_description]
-# e.g. the project's own S288C cache, byte for byte:
+# e.g. the project's own S288C cache, byte for byte (the mitochondrion uses genetic code 3):
+CODON_TABLES=Mito=Yeast_Mitochondrial \
 bash docs/prepare_input/build_snpeff_cache.sh R64-1-1.105 S288C_R64.fa S288C_R64.gff3 ./ref Saccharomyces_cerevisiae
 ```
 
@@ -82,6 +85,27 @@ checksum is a valid way to confirm a cache. The optional last argument is that d
 `<db>.genome : <description>` line of `snpEff.config`. It is stored inside both `.bin` files but does not
 affect annotation: built with the default description (the db name) the `.bin` files differ from the
 project's by exactly that one string, and the 100 contract-test variants annotate identically.
+**Re-verified 2026-11-02** with `CODON_TABLES=Mito=Yeast_Mitochondrial`: all four runtime files equal the
+cache as shipped since that date, the codon-table line included.
+
+### Genetic code (`codonTable`): the one thing the GFF3 cannot tell snpEff
+
+snpEff ignores the annotation's `/transl_table` and stores no genetic code in the `.bin` files. The code is a
+line per contig in the cache's `snpEff.config`, `<db>.<contig>.codonTable : <Table>`, read at annotation
+time; a contig without one is translated with the standard code. For yeast that is wrong on the
+mitochondrion (code 3: `TGA` is tryptophan), so a synonymous change at such a codon is reported as
+`stop_lost` and the protein change of any mitochondrial coding variant can be wrong, with no warning
+(measured 2026-11-02, `docs/dev-practices/genbank_reference_input.md` §4). Nuclear genes are unaffected.
+
+- `build_snpeff_cache.sh` writes the lines from `CODON_TABLES=contig=Table[,contig=Table]`; it checks the
+  contig against the FASTA and the table name against the image's list before building. Table names are
+  snpEff's: NCBI code 3 is `Yeast_Mitochondrial`, 4 `Mold_Mitochondrial` (also `Mycoplasma`), 11
+  `Bacterial_and_Plant_Plastid`, 12 `Alternative_Yeast_Nuclear` (CTG-clade yeasts).
+- An existing cache is fixed by appending the line to `<snpeff_cache>/<db>/snpEff.config` (and to the
+  parent `snpEff.config`, if you keep one): the `.bin` files do not change. The project's `R64-1-1.105`
+  caches carry `R64-1-1.105.Mito.codonTable : Yeast_Mitochondrial` since 2026-11-02; the `ottilie/v1`
+  copies on blob storage still lack it until the `ottilie/v2` test-data package.
+- `tests/snpeff_codon_table.nf.test` checks the shipped cache with a synthetic COX2 variant.
 
 ## Provenance and retired scripts
 

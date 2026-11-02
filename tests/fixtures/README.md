@@ -176,3 +176,32 @@ sed -E 's/\tUR:[^\t]*//' $R.dict > $D/S288C_R64_test.dict
 ```
 
 The negative-control case uses `tests/variantfiltration_fallback_typeeq.config` (no fixture of its own).
+
+## `cox2_mito_73925.vcf` + `snpeff_cache_mito/` — snpEff codon-table test
+
+Used by `tests/snpeff_codon_table.nf.test`. The VCF is one synthetic record, `Mito:73925 A>G`: the third
+base of the first in-frame `TGA` of COX2 (`Q0250`, CDS 73758..74513, + strand, no intron) of the S288C
+R64 mitochondrion. Under the yeast mitochondrial code it is `TGA>TGG`, Trp56Trp, synonymous; under the
+standard code it is a lost stop. Hand-written; the position was derived from the cache's `sequences.fa`
+(`genbank_reference_input.md` §9).
+
+`snpeff_cache_mito/{with,without}_codon_table/S288C_mito/` are two copies of one Mito-only snpEff 5.1
+cache (runtime files only: `sequence.bin`, `snpEffectPredictor.bin`, `snpEff.config`; 25 KB each),
+differing in the one line `S288C_mito.Mito.codonTable : Yeast_Mitochondrial`. Built from the Mito
+records of the project's `R64-1-1.105` cache inputs (Ensembl release 105), so the test needs no
+`data/ottilie/` for its fixture cases. Regenerate:
+
+```bash
+SRC=data/ottilie/S288C_reference_test/snpeff_cache/R64-1-1.105; W=$(mktemp -d); mkdir -p $W/data/S288C_mito
+awk '/^>/{keep=($1==">Mito"); if(keep)print ">Mito"; next} keep' $SRC/sequences.fa > $W/data/S288C_mito/sequences.fa
+awk -F'\t' '/^#/ || $1=="Mito"' $SRC/genes.gff > $W/data/S288C_mito/genes.gff
+printf 'S288C_mito.genome : S288C_mito\n' > $W/data/S288C_mito/snpEff.config
+docker run --rm -u $(id -u):$(id -g) -v $W:/w quay.io/biocontainers/snpeff:5.1--hdfd78af_2 \
+  snpEff build -gff3 -noCheckCds -noCheckProtein -dataDir /w/data -c /w/data/S288C_mito/snpEff.config S288C_mito
+F=tests/fixtures/snpeff_cache_mito
+for v in with_codon_table without_codon_table; do
+  mkdir -p $F/$v/S288C_mito && cp $W/data/S288C_mito/{sequence.bin,snpEffectPredictor.bin} $F/$v/S288C_mito/
+  printf 'S288C_mito.genome : S288C_mito\n' > $F/$v/S288C_mito/snpEff.config
+done
+printf 'S288C_mito.Mito.codonTable : Yeast_Mitochondrial\n' >> $F/with_codon_table/S288C_mito/snpEff.config
+```

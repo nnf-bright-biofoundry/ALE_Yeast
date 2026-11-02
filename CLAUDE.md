@@ -259,6 +259,10 @@ non-obvious rules, each learned by running it — full detail in the same doc:
   `docs/prepare_input/build_snpeff_cache.sh` (FASTA + GFF3 in) — user page
   [`docs/usage/prepare_reference.md`](docs/usage/prepare_reference.md). `gen_cache.sh` retired 2026-09-08
   (hard-coded dev paths). snpEff **5.1** only; flat `<db>/` layout; `snpeff_cache` has **no default**.
+  The cache's `snpEff.config` carries the **genetic code per contig** (`<db>.<contig>.codonTable : <Table>`,
+  read at annotation time; snpEff ignores `/transl_table`): the shipped `R64-1-1.105` caches carry
+  `Mito : Yeast_Mitochondrial` since 2026-11-02 (`CODON_TABLES=` in the build script, test
+  `tests/snpeff_codon_table.nf.test`); the `ottilie/v1` blob copies follow with `ottilie/v2` (`genbank_reference_input.md` §7).
 - **Fork base**: nf-core/sarek 3.5.1 — the fork tree lives at the **repo root** (`main.nf`, `conf/`,
   `workflows/`, `modules/`, `subworkflows/`); consult the upstream 3.5.1 docs for base behavior.
   For diffing against pristine 3.5.1, fetch it per `docs/dev-practices/SAREK_MODIFICATIONS.md` (`nf-core pipelines

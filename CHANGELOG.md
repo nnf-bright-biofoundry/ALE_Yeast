@@ -583,6 +583,31 @@
 
 ### Fixed
 
+- **Mitochondrial variants were annotated with the standard genetic code** (found 2026-10-29 while
+  measuring the direct GenBank build, fixed 2026-11-02). snpEff ignores the annotation's `/transl_table`
+  and keeps no genetic code in a built database: it reads `<db>.<contig>.codonTable : <Table>` from the
+  cache's `snpEff.config` at annotation time, and the project's Ensembl-built `R64-1-1.105` cache had only
+  the `.genome` line. Every `TGA` in the 59 mitochondrial CDS therefore read as a stop (it is tryptophan
+  in yeast mitochondria), so a synonymous change at such a codon came out as `stop_lost`, the `p.` string
+  of any mito coding variant could be wrong and a real nonsense variant there could hide; the 19
+  `/transl_table=3` CDS were also the whole `Errors: 19` of the build-time protein check. Fixed by one
+  line, `R64-1-1.105.Mito.codonTable : Yeast_Mitochondrial`, appended to both local caches
+  (`data/ottilie/S288C_reference/snpeff_cache` and the `_test` copy, which is the same cache, parent and
+  per-genome config). The published `ottilie/v1` caches on both storage accounts are unchanged until the
+  `ottilie/v2` package of the GenBank-input work (`genbank_reference_input.md` §7), so a cloud run on `v1`
+  (`ottilie_pilot_az`, `ottilie_test_az`, the Launchpad entry) still annotates Mito with the standard code.
+  `docs/prepare_input/build_snpeff_cache.sh` takes `CODON_TABLES=contig=Table,...`, validated against the
+  image's table list before the build and appended after it (a `codonTable` line in the build's `-c`
+  config makes snpEff demand the table definitions there); the `.bin` files do not depend on the line,
+  verified byte for byte on R64-1-1.105. New test `tests/snpeff_codon_table.nf.test` (3 cases, ~85 s)
+  runs the real module on a synthetic COX2 variant (`Mito:73925 A>G`, the third base of the gene's first
+  in-frame `TGA`): `synonymous_variant p.Trp56Trp` on the shipped cache and on a 25 KB Mito-only fixture
+  cache with the line, `stop_lost p.Ter56Trpext*?` on the same fixture without it. Provenance (testing
+  guide §13): every mitochondrial annotation produced before 2026-11-02 used the standard code; nuclear
+  annotations are unaffected; no published number changes (the only mitochondrial site in the pilot
+  results, `Mito:53278`, is intergenic and undetected); `04_validate/README.md` records it. The e2e
+  snapshot is unchanged: the test set has no Mito contig. Measurements:
+  `docs/dev-practices/genbank_reference_input.md` §4.
 - **The joint-calling subworkflow could not emit the raw joint VCF** (found 2026-10-16 by
   `tests/joint_calling_output_selection.nf.test`, fixed 2026-10-19). The fallback join at
   `subworkflows/local/bam_joint_calling_germline_gatk/main.nf:145` (and `:154` for the index) had no
