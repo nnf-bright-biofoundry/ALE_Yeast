@@ -163,6 +163,28 @@ Behaviours that are counter-intuitive or that the documentation doesn't settle:
   push to `main` touches the Dockerfile, so it lags. Nothing in the pipeline resolves `main`,
   `latest`, or `sha-*` — `params.report_container` pins the exact release tag.
 
+## Field notes from v1.1.0 (2026-11-09)
+
+A release with no container change: `containers/generate_index/` had no commit since v1.0.0.
+
+- **The pin stayed `ale-reports:1.0.0`** and the release commit (`62472dc`) moved one output line, the
+  pipeline line of `versions.yml` (`v1.0.0` → `v1.1.0`); the contract-test snapshot was re-recorded in
+  that commit.
+- **The tag push fired CI again despite the `paths:` filter** (run `42681552697`, 2026-11-09): second
+  observation of the v1.0.0 field note, still not a documented guarantee.
+- **CI published an image nothing uses:** `1.1.0`, `sha-62472dc` and `latest`, all one digest
+  (`sha256:82a0d4620ae1…`). `latest` moved again.
+- **The pinned image was not rewritten:** `1.0.0` kept its digest (`sha256:0e52d5aec52f…`) and its push
+  date (2026-08-31), compared against the step 3 baseline. So step 6(d), the contract test against the
+  shipped image, was already satisfied by the pre-tag run and was not repeated. It is needed only when
+  the pin moves or the pinned tag's digest changes.
+- **Step 6(c) note:** with an unchanged pin there is nothing stale to pull.
+- **CI warnings to act on before they bite:** the workflow's actions (`actions/checkout@v4`,
+  `docker/build-push-action@v6`, `docker/login-action@v3`, `docker/metadata-action@v5`) target
+  Node.js 20 and are forced onto Node.js 24; `ubuntu-latest` is moving to Ubuntu 26.
+- **The annotated tag was created on the named commit** (`git tag -a v1.1.0 62472dc -m …`), after
+  `main` was on origin: naming the commit keeps the tag off anything committed in between.
+
 ## If something goes wrong
 
 - **CI didn't fire** → Actions → Run workflow → select the tag ref. No re-tagging needed.
