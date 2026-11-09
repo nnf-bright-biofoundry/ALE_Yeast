@@ -276,6 +276,22 @@ same `NXF_VER=25.10.4` prefix as every other invocation ([`../usage/new_machine_
 > fix is an `.nftignore` pattern — each one there was verified with a controlled probe, per the
 > comments in that file.
 
+### Every ALE test takes `-c tests/nf-test-ottilie.config`, module tests too
+
+The `-c` file is not only the e2e's resource/profile config: it is what enables `docker` for any test
+under `tests/`. The root `nf-test.config` applies only the upstream `test` profile, so a module test
+launched bare (`nf-test test tests/snpeff_build.nf.test`) runs its containerised process on the host,
+where the tool binary does not exist, and every such case fails with exit 1 and an empty `.command.err`
+within seconds. Processes that need no container still pass, which makes it look like one module broke.
+Learned 2026-11-04 (6 of 12 cases red, 12 of 12 green two minutes later with the `-c` file). Always:
+
+```bash
+NXF_VER=25.10.4 nf-test test -c tests/nf-test-ottilie.config tests/<name>.nf.test
+```
+
+The symptom and its diagnosis: [`troubleshooting.md`](troubleshooting.md#every-containerised-nf-test-task-exits-1-within-seconds-with-an-empty-commanderr).
+Each test file's header comment carries its own command line; keep that line when adding a test.
+
 ### Why our component tests live in `tests/`, not co-located
 
 nf-core convention puts a component test next to its component

@@ -210,3 +210,26 @@ GFF3 too, and a mismatch there annotates nothing, silently
 ([`prepare_reference.md`](../usage/prepare_reference.md)). GFF3 contigs the FASTA lacks do not stop
 the run: the OK row in the MultiQC table lists them, the expected picture for a chromosome-subset
 reference such as the ottilie test set.
+
+## Every containerised nf-test task exits 1 within seconds, with an empty `.command.err`
+
+Symptom: `nf-test test tests/<name>.nf.test` reports a process "terminated with an error exit status
+(1)", the task's `.command.out`, `.command.err` and `.command.log` are all empty, the work directory holds
+only the staged inputs, and `.command.run` contains no `docker` line. The tests that run no container
+(pure-Python or script-only processes on the host) pass in the same session, so it looks like the
+containerised module broke. Seen 2026-11-04 on `snpeff_build.nf.test` (5/5 red) and the first case of
+`genbank_reference.nf.test`, a day after both had been recorded green.
+
+Cause: the test was launched **without `-c tests/nf-test-ottilie.config`**. The root `nf-test.config`
+(kept 0-diff against upstream sarek) applies only the `test` profile, so no container engine is enabled
+and the task runs on the bare VM, where the tool binary does not exist. The `-c` file is what turns on
+`docker` and the ottilie profile ([`testing_best_practices.md` §10](testing_best_practices.md#10-existing-test-infrastructure)).
+
+Fix: every test under `tests/` takes the same prefix, module tests included:
+
+```bash
+NXF_VER=25.10.4 nf-test test -c tests/nf-test-ottilie.config tests/<name>.nf.test
+```
+
+Each test file's header comment repeats its own command line. A failure that reproduces *with* the `-c`
+config is a real one; one that vanishes with it was the launch, not the code.
