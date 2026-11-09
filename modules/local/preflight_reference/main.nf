@@ -5,6 +5,10 @@
 // table — nothing downstream depends on it, so adding it changed no other task's inputs or hashes.
 // conf/modules/preflight.config terminates the run on a failed check and echoes the verdict lines.
 // The checks themselves: bin/preflight_reference.sh. User page: docs/usage/preflight_checks.md.
+// Inputs 3 and 4 (2026-11-09): the pre-built snpEff cache and its database name, for the cache-vs-FASTA
+// contig-name row; [] on the GenBank route (SNPEFF_BUILD's gates compare the names there) and when
+// snpEff is not in --tools, which makes the row SKIPPED. Staging the cache changed this task's hash
+// on the pre-built route (it reruns once under -resume; seconds).
 process PREFLIGHT_REFERENCE {
     tag "reference"
     label 'process_single'
@@ -16,7 +20,9 @@ process PREFLIGHT_REFERENCE {
 
     input:
     path fasta
-    path gff3    // [] when --report_gff3 is unset: the FASTA-vs-GFF3 row then reads SKIPPED
+    path gff3          // [] when --report_gff3 is unset: the FASTA-vs-GFF3 row then reads SKIPPED
+    path snpeff_cache  // the pre-built --snpeff_cache directory, or []: the cache row then reads SKIPPED
+    val  snpeff_db     // the database directory inside it (--snpeff_db); any string when snpeff_cache is []
 
     output:
     path "preflight_reference_mqc.tsv", emit: mqc
@@ -26,9 +32,10 @@ process PREFLIGHT_REFERENCE {
     task.ext.when == null || task.ext.when
 
     script:
-    def gff3_arg = gff3 ? "--gff3 ${gff3}" : ''
+    def gff3_arg  = gff3 ? "--gff3 ${gff3}" : ''
+    def cache_arg = snpeff_cache ? "--snpeff-cache ${snpeff_cache} --snpeff-db ${snpeff_db}" : ''
     """
-    preflight_reference.sh --fasta ${fasta} ${gff3_arg} --out preflight_reference_mqc.tsv
+    preflight_reference.sh --fasta ${fasta} ${gff3_arg} ${cache_arg} --out preflight_reference_mqc.tsv
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

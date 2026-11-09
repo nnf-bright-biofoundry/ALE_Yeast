@@ -133,6 +133,15 @@ The same script run on the real ottilie reference (not committed, `data/ottilie/
 gives OK on 17/17 contigs, ERROR on a copy of `S288C_R64.gff3` with a `chr` prefix added to column 1,
 and an OK row noting `Mito, XVI` when those two contigs are removed from the FASTA (checked 2026-09-28).
 
+### `preflight_reference/mito.fa`, `mito_chrz.fa` — **hand-made** (2026-11-09)
+
+Two header-only-sized FASTAs (10 bp per contig; the cache check reads headers only) for the second check of
+`bin/preflight_reference.sh`, the FASTA's contig names against the pre-built snpEff database's, run against
+the Mito-only fixture cache `snpeff_cache_mito/with_codon_table/` (database `S288C_mito`, one chromosome
+`Mito`): `mito.fa` (`Mito`, with a description after the name) → OK, exact; `mito_chrz.fa` (`Mito` + `chrZ`)
+→ WARN naming `chrZ`; the three-contig `ref.fa` above → ERROR, no shared name. The subset case (OK with a
+note) uses the shipped test cache and FASTA of the ottilie profile instead, like the codon-table test.
+
 ## VARIANTFILTRATION_FALLBACK (`tests/variantfiltration_fallback.nf.test`)
 
 ### `joint_germline_unfiltered.vcf.gz` (+ `.tbi`) — 2-sample, faithful, **unfiltered**
@@ -177,13 +186,14 @@ sed -E 's/\tUR:[^\t]*//' $R.dict > $D/S288C_R64_test.dict
 
 The negative-control case uses `tests/variantfiltration_fallback_typeeq.config` (no fixture of its own).
 
-## `cox2_mito_73925.vcf` + `snpeff_cache_mito/` — snpEff codon-table test
+## `cox2_mito_73925.vcf`, `cox2_chrM_73925.vcf` + `snpeff_cache_mito/` — snpEff codon-table test
 
 Used by `tests/snpeff_codon_table.nf.test`. The VCF is one synthetic record, `Mito:73925 A>G`: the third
 base of the first in-frame `TGA` of COX2 (`Q0250`, CDS 73758..74513, + strand, no intron) of the S288C
 R64 mitochondrion. Under the yeast mitochondrial code it is `TGA>TGG`, Trp56Trp, synonymous; under the
 standard code it is a lost stop. Hand-written; the position was derived from the cache's `sequences.fa`
-(`genbank_reference_input.md` §9).
+(`genbank_reference_input.md` §9). `cox2_chrM_73925.vcf` is the same record with CHROM `chrM` (2026-11-09),
+for the `--genbank` case built from `genbank/mito_chrM.gbff`.
 
 `snpeff_cache_mito/{with,without}_codon_table/S288C_mito/` are two copies of one Mito-only snpEff 5.1
 cache (runtime files only: `sequence.bin`, `snpEffectPredictor.bin`, `snpEff.config`; 25 KB each),
@@ -216,6 +226,10 @@ printf 'S288C_mito.Mito.codonTable : Yeast_Mitochondrial\n' >> $F/with_codon_tab
   ACCESSION, VERSION or DBLINK line, `/chromosome="M"` added to the source feature (snpEff would name the
   contig `M` without the VERSION rewrite), every `/transl_table` and `/translation` removed (a draft annotated
   by a gene caller that writes neither).
+- `mito_chrM.gbff` (2026-11-09): the NCBI record with only its LOCUS renamed to `chrM`, everything else kept
+  (ACCESSION, `VERSION NC_001224.1`, `/transl_table=3`, `/translation`), the user-renamed case: snpEff stores
+  the contig as `M`, the codonTable line stays keyed on `chrM`, and a VCF with CHROM `chrM` still annotates
+  with the mitochondrial code. Written by `make_fixtures.py`.
 - `synthetic_two_records.gb`, `synthetic_duplicate_locus.gb`, `synthetic_mixed_tables.gb`,
   `synthetic_name_collision.gb`: written by `make_fixtures.py` with BioPython 1.81 from seeded random
   sequences, so every coordinate in the tests is hand-checkable. `plasmidA` (2,400 bp, `/plasmid`, three CDS

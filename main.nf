@@ -71,8 +71,11 @@ aligner = params.aligner
 include { SAREK                            } from './workflows/sarek'
 include { ANNOTATION_CACHE_INITIALISATION  } from './subworkflows/local/annotation_cache_initialisation'
 include { DOWNLOAD_CACHE_SNPEFF_VEP        } from './subworkflows/local/download_cache_snpeff_vep'
+include { GENBANK_REFERENCE                } from './modules/local/genbank_reference/main'
+include { SNPEFF_BUILD                     } from './modules/local/snpeff_build/main'
 include { PIPELINE_COMPLETION              } from './subworkflows/local/utils_nfcore_sarek_pipeline'
 include { PIPELINE_INITIALISATION          } from './subworkflows/local/utils_nfcore_sarek_pipeline'
+include { genbankDbName                    } from './subworkflows/local/utils_nfcore_sarek_pipeline'
 include { PREPARE_GENOME                   } from './subworkflows/local/prepare_genome'
 include { PREPARE_INTERVALS                } from './subworkflows/local/prepare_intervals'
 include { PREPARE_REFERENCE_CNVKIT         } from './subworkflows/local/prepare_reference_cnvkit'
@@ -99,7 +102,8 @@ dbsnp_vqsr                  = params.dbsnp_vqsr         ?   Channel.value(params
 known_indels_vqsr           = params.known_indels_vqsr  ?   Channel.value(params.known_indels_vqsr) : Channel.empty()
 known_snps_vqsr             = params.known_snps_vqsr    ?   Channel.value(params.known_snps_vqsr)   : Channel.empty()
 ngscheckmate_bed            = params.ngscheckmate_bed   ?   Channel.value(params.ngscheckmate_bed)  : Channel.empty()
-snpeff_db                   = params.snpeff_db          ?:  Channel.empty()
+// snpEff database name: --snpeff_db, else the GenBank's basename on the --genbank route (null when neither)
+snpeff_db                   = params.snpeff_db          ?:  genbankDbName(params.genbank)
 vep_cache_version           = params.vep_cache_version  ?:  Channel.empty()
 vep_genome                  = params.vep_genome         ?:  Channel.empty()
 vep_species                 = params.vep_species        ?:  Channel.empty()
@@ -132,6 +136,27 @@ workflow NFCORE_SAREK {
 
     main:
     versions = Channel.empty()
+
+    // Reference route (docs/dev-practices/genbank_reference_input.md §5). With --genbank, the extract
+    // task derives the FASTA, the report's GFF3, the contig manifest and the snpEff input from the one
+    // file and the build task makes the snpEff database; both run before alignment, in a QC-only run
+    // too, and publish reference/<db>/. Otherwise upstream's pre-built files (fasta, snpeff_cache,
+    // report_gff3). Both given is a start-up error (validateReferenceRoute); every downstream channel
+    // keeps upstream's shape, so nothing below this block knows which route ran.
+    if (params.genbank) {
+        GENBANK_REFERENCE(Channel.fromPath(params.genbank, checkIfExists: true).first(), snpeff_db)
+        SNPEFF_BUILD(GENBANK_REFERENCE.out.snpeff_input, GENBANK_REFERENCE.out.expected_contigs)
+        // both tasks take only value channels (one file, one name), so every output is a value channel
+        fasta              = GENBANK_REFERENCE.out.fasta.map { f -> [ [ id:f.baseName ], f ] }
+        report_gff3        = GENBANK_REFERENCE.out.gff3
+        reference_mqc      = GENBANK_REFERENCE.out.mqc.mix(SNPEFF_BUILD.out.mqc)
+        reference_versions = GENBANK_REFERENCE.out.versions.mix(SNPEFF_BUILD.out.versions)
+    } else {
+        // [] (not null, not a placeholder file) is the idiom for an absent optional path: nothing to stage
+        report_gff3        = params.report_gff3 ? Channel.value(file(params.report_gff3, checkIfExists: true)) : Channel.value([])
+        reference_mqc      = Channel.empty()
+        reference_versions = Channel.empty()
+    }
 
     // build indexes if needed
     PREPARE_GENOME(
@@ -246,7 +271,7 @@ workflow NFCORE_SAREK {
         ANNOTATION_CACHE_INITIALISATION(
             (params.snpeff_cache && params.tools && (params.tools.split(',').contains("snpeff") || params.tools.split(',').contains('merge'))),
             params.snpeff_cache,
-            params.snpeff_db,
+            snpeff_db,
             (params.vep_cache && params.tools && (params.tools.split(',').contains("vep") || params.tools.split(',').contains('merge'))),
             params.vep_cache,
             params.vep_species,
@@ -258,6 +283,8 @@ workflow NFCORE_SAREK {
             snpeff_cache = ANNOTATION_CACHE_INITIALISATION.out.snpeff_cache
             vep_cache    = ANNOTATION_CACHE_INITIALISATION.out.ensemblvep_cache
     }
+    // GenBank route: the database SNPEFF_BUILD made, in the [ meta, cache ] shape of the initialisation
+    if (params.genbank) snpeff_cache = SNPEFF_BUILD.out.cache
 
     //
     // WORKFLOW: Run pipeline
@@ -307,7 +334,11 @@ workflow NFCORE_SAREK {
         vep_fasta,
         vep_genome,
         vep_species,
-        preflight_mqc
+        preflight_mqc,
+        report_gff3,
+        reference_mqc,
+        reference_versions,
+        snpeff_db
     )
     emit:
     multiqc_report = SAREK.out.multiqc_report // channel: /path/to/multiqc_report.html

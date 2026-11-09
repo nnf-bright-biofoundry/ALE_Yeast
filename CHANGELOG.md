@@ -2,7 +2,44 @@
 
 ## Unreleased
 
+### Added
+
+- **The reference genome as one GenBank file: `--genbank` (2026-11-09).** With `--genbank genome.gb[.gz]`
+  the pipeline derives the reference itself, before alignment and in a QC-only run too: the extract task
+  (`GENBANK_REFERENCE`, BioPython) writes the FASTA and the mutation report's gene track with the LOCUS
+  names, the contig manifest and the per-genome `snpEff.config` with one `codonTable` line per
+  non-standard contig; the build task (`SNPEFF_BUILD`, `snpEff build -genbank`) makes the snpEff database
+  and verifies it with its two gates. Everything downstream is unchanged: the FASTA, the database and the
+  GFF3 flow into upstream's channels, so no caller, report or output knows which route ran. `snpeff_db`
+  defaults to the file's basename (`--snpeff_db` overrides). `reference/<db>/` holds the GenBank itself,
+  the FASTA, the GFF3, the manifest, the database and the build log, in every run. Four rows join the
+  *yAMP input checks* table: *GenBank contig identifiers*, *GenBank genetic code*, *snpEff build: protein
+  check*, *snpEff build: contig names*. `--genbank` together with `--fasta`, `--snpeff_cache`,
+  `--report_gff3` or `--download_cache` is a start-up error, and so is a run with neither `--genbank`
+  nor `--fasta`. The pre-built route (`fasta`, `snpeff_cache`, `snpeff_db`, `report_gff3`) is unchanged
+  and still what the contract test and every profile use; the launch form, the user guide, the output
+  scripts' contig order and the test data follow in the next packages (`docs/dev-practices/genbank_reference_input.md`,
+  status line). Tests: `tests/genbank_route.nf.test` (the route as a QC-only run, both start-up errors),
+  a `chrM` case in `tests/genbank_reference.nf.test` and `tests/snpeff_codon_table.nf.test`;
+  `tests/qc_gate.sh` adds the two reference tasks to its allow-list when run 1 took this route
+  (`QC_GATE_PARAMS_FILE=tests/qc_gate_genbank_params.yml`).
+- **The reference preflight compares the FASTA with the pre-built snpEff database (2026-11-09).** A second
+  row of `PREFLIGHT_REFERENCE`, *snpEff cache vs FASTA contig names*: the database's chromosome names are
+  read from `snpEffectPredictor.bin` and compared with the FASTA headers as snpEff looks them up. ERROR when
+  no name is shared, when `--snpeff_db` names no directory of `--snpeff_cache` (the row lists what is
+  there; the first visible mistake on an `az://` cache) or when that directory holds no database; WARN when
+  some FASTA contigs are not in the database (their variants silently stay unannotated); OK otherwise, noting
+  the database's extra contigs (the test set: 4 of 17). SKIPPED without snpEff or on the GenBank route. One
+  content line of the contract-test snapshot (`reports/preflight/preflight_reference_mqc.tsv`) moved; the
+  task's hash moved with its inputs, so it reruns once under `-resume` (seconds).
+
 ### Fixed
+
+- **Interval chunk names cut at the first dot (2026-11-09).** `conf/modules/mpileup.config`,
+  `conf/modules/prepare_recalibration.config` and `bam_variant_calling_sentieon_dnascope` named a
+  per-interval output after `intervals.simpleName`, which cuts a dotted contig name (`NC_001224.1`) at the
+  first dot, so two interval chunks of one contig could collide under a user BED; now `baseName`, as every
+  other caller's config already read. Inert on the test set (no dotted name, whole-contig intervals).
 
 - **Local test runs: a task that needed the scheduler's whole budget could be stranded (2026-11-09).**
   A contract-test run stopped after 136 completed tasks with four `SNPEFF_SNPEFF` tasks queued and

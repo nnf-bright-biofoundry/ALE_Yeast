@@ -29,10 +29,10 @@ for f in main.nf nextflow.config nextflow_schema.json workflows/sarek/main.nf; d
 |----------|-------|-----------------------------------|
 | Root files | — | `main.nf`, `nextflow.config`, `nextflow_schema.json` |
 | Core workflow | — | `workflows/sarek/main.nf` ⚠️ heaviest |
-| `subworkflows/local/` | 5 | 9 |
+| `subworkflows/local/` | 5 | 10 |
 | `modules/local/` | 21 | 0 |
 | `modules/nf-core/` | 5 (installed) | **4 patched** ⚠️ |
-| `conf/` | 19 | 7 |
+| `conf/` | 19 | 9 |
 
 ---
 
@@ -60,7 +60,8 @@ for f in main.nf nextflow.config nextflow_schema.json workflows/sarek/main.nf; d
   downstream of alignment can fire on EMPTY input — a `toList()`, an `ifEmpty(...)`, a `Channel.value`
   / `Channel.of`, or a plain-file input as a process's *only* inputs would make that process run in a
   QC-only run, silently. Reference preparation, `PREPARE_GFF3` and `PREFLIGHT_REFERENCE` do exactly that
-  and are on the allow-list on purpose. A `remainder: true` join is another way in (*measured* 2026-10-19:
+  and are on the allow-list on purpose, as are `GENBANK_REFERENCE` and `SNPEFF_BUILD` when the launch
+  takes the `--genbank` route (the script reads the route from run 1's parameter summary). A `remainder: true` join is another way in (*measured* 2026-10-19:
   `bam_joint_calling_germline_gatk` emitted a `[meta, null]` row from its `ifEmpty` placeholder once both
   output joins had a remainder, and the run died on `vcf.baseName`; a `filter` on the merged VCF guards it). **After any change or rebase that adds such an operator downstream of
   alignment, run `tests/qc_gate.sh a`** (minutes; the commit gate demands its trailer for `workflows/`
@@ -89,6 +90,17 @@ for f in main.nf nextflow.config nextflow_schema.json workflows/sarek/main.nf; d
   (`MULTIQC_READ_QC` is on the allow-list, the other two must not run). `MUTATION_REPORT` now gets
   `MULTIQC.out.report.toList()` directly; `multiqc_report` (the completion e-mail's) is the read-QC
   report under `--qc_only`. The Workflow Summary goes through `collapsedSummaryMultiqc()`.
+  **The GenBank reference route (2026-11-09, `genbank_reference_input.md` §5–§6):** four new `take:` inputs
+  after `preflight_mqc` — `report_gff3` (a value channel: the file of `--report_gff3`, or the GFF3
+  `GENBANK_REFERENCE` derived; `[]` without either), `reference_mqc` and `reference_versions` (the two
+  reference tasks' input-checks rows and `versions.yml`, empty on the pre-built route; mixed into
+  `reports`/`versions` first) and `snpeff_db` (the resolved database name, which replaces `params.snpeff_db`
+  at the `VCF_ANNOTATE_ALL` call). `PREFLIGHT_REFERENCE` takes two more inputs, the pre-built snpEff cache
+  (`snpeff_cache.map{ meta, cache -> cache }` only when `params.snpeff_cache` is set with snpEff in `tools`
+  and no `--genbank`/`--download_cache`; `[]` otherwise) and the database name, for its cache-vs-FASTA row.
+  `MUTATION_REPORT`'s last argument is the `report_gff3` channel instead of `file(params.report_gff3)`. The
+  read group's `DS:` falls back to `params.genbank` when there is no `--fasta`. Nothing else in the workflow
+  knows which route ran.
 - **`assets/multiqc_config.yml`** — `module_order` has two `fastqc` entries with distinct `anchor`s
   (`fastqc_raw` with `path_filters_exclude`, `fastqc_trimmed` with `path_filters` on
   `*_trimmed*_fastqc.zip`) around fastp, and `extra_fn_clean_exts` strips `_trimmed` (2026-09-23;
@@ -102,7 +114,16 @@ for f in main.nf nextflow.config nextflow_schema.json workflows/sarek/main.nf; d
   `<manifest.name with / → ->-summary`, so upstream's `nf-core-sarek-summary` stopped matching when
   `manifest.name` changed (2026-07-27) and the summary rendered second instead of last. Re-key it (and the
   `summary_id` in `tests/ottilie_e2e.nf.test`) whenever `manifest.name` changes.
-- **`main.nf`** — removed the old outer MUTATION_REPORT path-discovery call (superseded by the inline
+- **`main.nf`** — **the GenBank reference route (2026-11-09):** `snpeff_db = params.snpeff_db ?:
+  genbankDbName(params.genbank)` at script level (replaces upstream's unused `snpeff_db` value line); inside
+  `NFCORE_SAREK`, before `PREPARE_GENOME`, `if (params.genbank)` runs `GENBANK_REFERENCE` (the file, the db
+  name) and `SNPEFF_BUILD` and sets `fasta` (`[ [id: baseName], fa ]`), `report_gff3`, `reference_mqc` and
+  `reference_versions` from their outputs; the `else` branch builds `report_gff3` from `--report_gff3` (or
+  `[]`) and empty channels. Both tasks take only value channels, so their outputs are value channels and
+  need no `first()`. After the cache initialisation, `if (params.genbank) snpeff_cache = SNPEFF_BUILD.out.cache`
+  (the `[ meta, cache ]` shape of `ANNOTATION_CACHE_INITIALISATION`, which is skipped on this route because
+  `params.snpeff_cache` is null). The four values are passed to `SAREK` as its last inputs;
+  `ANNOTATION_CACHE_INITIALISATION` gets `snpeff_db` instead of `params.snpeff_db`. Earlier: removed the old outer MUTATION_REPORT path-discovery call (superseded by the inline
   call); `NFCORE_SAREK` takes a second input, `preflight_mqc`, passed on to `SAREK` as its last
   argument (2026-09-29, the input-checks table); otherwise close to upstream.
 - **`nextflow.config`** — ALE params (report_* / generate_reports / split & hard-filter HC / read
@@ -156,13 +177,13 @@ read preprocessing (2026-09-02): `trim_adapter` (upstream `trim_fastq` kept as d
 
 | Subworkflow | Purpose |
 |-------------|---------|
-| `mutation_report` | Multi-caller dashboard (CN/SV matrices + igv-reports + index). Channel-based. |
+| `mutation_report` | Multi-caller dashboard (CN/SV matrices + igv-reports + index). Channel-based. The gene-track gate reads `params.report_gff3 \|\| params.genbank` (2026-11-09): on the GenBank route the GFF3 arrives as a channel from `GENBANK_REFERENCE`. |
 | `split_joint_vcf` | Split joint germline VCF → per-sample VCFs (channel-based metadata). |
 | `vcf_filter_haplotypecaller_joint` | Hard-filter per-sample VCFs from joint calling. Opt-in (`--hard_filter_haplotypecaller_joint`); off in every ALE recipe since 2026-09-08. |
 | `fastq_variant_calling_breseq` | breseq path (AMP-v1 legacy integration, not Tier 1). |
 | `fastqc_trimmed` | `FASTQC_TRIMMED_QC` (2026-09-23): FastQC on the fastp output (`CAT_FASTQ` per mate first when `split_fastq > 0`), report-only, mixed into MultiQC as a second FastQC section (`assets/multiqc_config.yml`: two `fastqc` anchors + `_trimmed` clean rule). Called from `workflows/sarek/main.nf` inside the fastp block under the `fastqc` skip token. Unit test `tests/fastqc_trimmed.nf.test`. |
 
-## `subworkflows/local/` — MODIFIED (9, in place)
+## `subworkflows/local/` — MODIFIED (10, in place)
 
 | Subworkflow | ALE change (why) |
 |-------------|------------------|
@@ -170,8 +191,9 @@ read preprocessing (2026-09-02): `trim_adapter` (upstream `trim_fastq` kept as d
 | `bam_variant_calling_germline_manta` | `joint_manta` input + one `groupTuple` branch (per-patient multi-sample run); `manta_config` input (optional configManta.py ini → module `config`, `[]` otherwise); `tbi` emit (3.8.1 shape). Deliberately mirrors upstream `joint_mutect2`; new lines in 3.10 strict-syntax dialect, no versions plumbing → pastes onto sarek `dev` unchanged. **Upstream PR candidate** — keep free of ALE-specific logic. |
 | `bam_variant_calling_cnvkit` | Ploidy passthrough; emit `cnr`/`cns_batch` for the report. |
 | `bam_joint_calling_germline_gatk` | `VARIANTFILTRATION_FALLBACK` when VQSR can't run (custom genomes, no known-sites). |
-| `samplesheet_to_channel` | ALE metadata columns (ploidy; all-samples-as-normal). Launch-time guard (2026-09-07): `snpeff` in `tools` with neither `snpeff_cache` nor `download_cache` → error; new `download_cache` take (caller `utils_nfcore_sarek_pipeline` passes it). |
-| `utils_nfcore_sarek_pipeline` | YAML `processVersionsFromYAML()` reads content explicitly (cloud paths, SnakeYAML ambiguity) and drops empty documents. **ALE preflight (2026-09-23):** `validateAleRecipe()` (called from `validateInputParameters()`; warns per parameter that drifts from the Tier-1 recipe map — a deliberate second copy of `conf/test/ottilie_common.config` + the read-preprocessing defaults, kept honest by the zero-warnings case of `tests/preflight.nf.test`) and `validateAleSamplesheet(rows)` (errors: empty experiment id after the schema's `patient`/`experiment` overwrite, duplicate input paths; warns: mixed ploidy / clonal flag within an experiment). To run the row checks at DAG build, `samplesheetToList()` is materialised into a list before `Channel.fromList` — same rows, same channel. Prefix `[yAMP preflight]`; user page `docs/usage/preflight_checks.md`. **QC-first run (2026-09-24):** `validateQcOnly()` (errors for `--qc_only` with `step != mapping`, `multiqc` skipped, `cleanup = true` — read via `workflow.session.config.cleanup`), and `PIPELINE_COMPLETION` takes two more inputs (`qc_only`, `multiqc_title`; `main.nf` passes `params.*`) for `qcOnlyCompletion()`, which prints the report path (MultiQC's `--title` → filename rule reproduced; measured on 1.25.1 and 1.35) and the `-resume <sessionId>` command. Neither `params` nor `workflow` resolves inside the `onComplete` closure of a workflow body (NPE at completion) — hence the inputs and the script-level function. **Input-checks table (2026-09-29):** the three `validate*` functions also return `[check, status, detail]` rows (OK rows included; console output unchanged), `preflightTable()` renders them with the header `bin/preflight_reference.sh` writes (same MultiQC id → one table; keep the two identical), and `PIPELINE_INITIALISATION` emits them as `preflight_mqc` (`collectFile`, `storeDir` `reports/preflight/`). `collapsedSummaryMultiqc()` wraps the Workflow Summary YAML of nf-core's `paramsSummaryMultiqc()` in `<details>` (the vendored function stays untouched). `qcOnlyCompletion()` names the read-QC report. |
+| `samplesheet_to_channel` | ALE metadata columns (ploidy; all-samples-as-normal). Launch-time guard (2026-09-07): `snpeff` in `tools` with neither `snpeff_cache` nor `download_cache` → error; new `download_cache` take (caller `utils_nfcore_sarek_pipeline` passes it). File unchanged for the GenBank route (2026-11-09): the caller passes `params.snpeff_cache ?: params.genbank` (the guard reads truthiness only: the database is built from the file), `params.snpeff_db ?: genbankDbName(params.genbank)` and `params.fasta ?: params.genbank` (the read group's `DS:`). |
+| `utils_nfcore_sarek_pipeline` | YAML `processVersionsFromYAML()` reads content explicitly (cloud paths, SnakeYAML ambiguity) and drops empty documents. **ALE preflight (2026-09-23):** `validateAleRecipe()` (called from `validateInputParameters()`; warns per parameter that drifts from the Tier-1 recipe map — a deliberate second copy of `conf/test/ottilie_common.config` + the read-preprocessing defaults, kept honest by the zero-warnings case of `tests/preflight.nf.test`) and `validateAleSamplesheet(rows)` (errors: empty experiment id after the schema's `patient`/`experiment` overwrite, duplicate input paths; warns: mixed ploidy / clonal flag within an experiment). To run the row checks at DAG build, `samplesheetToList()` is materialised into a list before `Channel.fromList` — same rows, same channel. Prefix `[yAMP preflight]`; user page `docs/usage/preflight_checks.md`. **QC-first run (2026-09-24):** `validateQcOnly()` (errors for `--qc_only` with `step != mapping`, `multiqc` skipped, `cleanup = true` — read via `workflow.session.config.cleanup`), and `PIPELINE_COMPLETION` takes two more inputs (`qc_only`, `multiqc_title`; `main.nf` passes `params.*`) for `qcOnlyCompletion()`, which prints the report path (MultiQC's `--title` → filename rule reproduced; measured on 1.25.1 and 1.35) and the `-resume <sessionId>` command. Neither `params` nor `workflow` resolves inside the `onComplete` closure of a workflow body (NPE at completion) — hence the inputs and the script-level function. **Input-checks table (2026-09-29):** the three `validate*` functions also return `[check, status, detail]` rows (OK rows included; console output unchanged), `preflightTable()` renders them with the header `bin/preflight_reference.sh` writes (same MultiQC id → one table; keep the two identical), and `PIPELINE_INITIALISATION` emits them as `preflight_mqc` (`collectFile`, `storeDir` `reports/preflight/`). `collapsedSummaryMultiqc()` wraps the Workflow Summary YAML of nf-core's `paramsSummaryMultiqc()` in `<details>` (the vendored function stays untouched). `qcOnlyCompletion()` names the read-QC report. **Reference route (2026-11-09):** `validateReferenceRoute()` (called from `validateInputParameters()`): `--genbank` together with any of `fasta`, `snpeff_cache`, `report_gff3`, `download_cache` is an error naming them, and neither `--genbank` nor `--fasta` (at a `--step` other than `annotate`) is an error too — upstream would start with an empty fasta channel and every reference task would silently never run; `genbankDbName(genbank)` (exported, `main.nf` includes it): the basename without `.gb`/`.gbk`/`.gbff`/`.genbank` and an optional `.gz`, the snpEff database name unless `--snpeff_db` is set; `params.genbank` joins `checkPathParamList`. |
+| `bam_variant_calling_sentieon_dnascope` | `intervals.simpleName` → `intervals.baseName` in the interval-name meta (2026-11-09, with `conf/modules/mpileup.config` and `prepare_recalibration.config`): `simpleName` cuts at the first dot, so two interval chunks of a contig named like `NC_001224.1` would share a name under a user BED; every other caller already used `baseName` (`genbank_reference_input.md` §5.5). |
 | `bam_variant_calling_somatic_all` | FreeBayes somatic channel disabled (noise for ALE). |
 | `bam_variant_calling_somatic_mutect2` | FilterMutectCalls placeholder-channel fix (runs without germline resource/PoN). |
 | `annotation_cache_initialisation` | Skip `exists()/isDirectory()` for `az|s3|gs://` cache paths (blob prefixes are not directories). ⚠️ **File deleted upstream in 3.9.0** (#2194), replaced by nf-core `utils_annotation_cache`, which also applies the `<db>/<db>/` key to every cloud URL — our flat `az://` cache dirs fail under it. Port as a subworkflow patch, or make it moot with a tarball cache: `ale_sarek_upgrade_runbook.md` → *Known Rebase Hazards: SnpEff cache*. |
@@ -202,9 +224,9 @@ own `modules/local/` (`add_info_to_vcf`, `create_intervals_bed`, `samtools`) is 
 | `prepare_vcf` | VCF pre-processing for igv-reports (multi-allelic split, …). |
 | `publish_vcfs` | The report's download VCFs, renamed for users (annotated when an annotator ran, else raw). |
 | `tiddit_sv_filter` | Manta-inspired soft filters for TIDDIT's PASS view (2026-08-31). |
-| `preflight_reference` | Task-level reference preflight (2026-09-28): `bin/preflight_reference.sh` in the gawk container; one check today, FASTA vs `report_gff3` contig names (`docs/usage/preflight_checks.md`). |
-| `genbank_reference` | GenBank reference route, step 1 (2026-11-02, unwired until `--genbank` lands): `bin/genbank_to_reference.py` in the BioPython container derives from one GenBank the FASTA and the report GFF3 (LOCUS names, record order), the contig manifest, the per-genome `snpEff.config` (one `codonTable` line per contig whose `/transl_table` is not 1), the snpEff copy with VERSION := LOCUS, the names snpEff will store, and two rows of the input-checks table. **Contig-name wiring convention** (`genbank_reference_input.md` §3.2): every contig name in a FASTA, GFF3, config line or manifest is the LOCUS name; whoever hands snpEff a GenBank rewrites VERSION first; snpEff stores names *simplified* (leading chr/chromo/chromosome and leading zeros stripped) and simplifies a VCF's CHROM the same way, so every output keeps LOCUS. |
-| `snpeff_build` | GenBank reference route, step 2: `snpEff build -genbank` in nf-core module shape (`meta.yml`) on snpEff's bundled config plus the per-genome codonTable lines; gates in `bin/snpeff_build_gates.sh` (protein check `Errors: 0`, stored contig names == the expected list), exit 65 on failure; the GenBank copy removed from the cache afterwards. Candidate for an nf-core `snpeff/build` contribution (inline the gate script then). |
+| `preflight_reference` | Task-level reference preflight (2026-09-28): `bin/preflight_reference.sh` in the gawk container; FASTA vs `report_gff3` contig names (`docs/usage/preflight_checks.md`). **Second check (2026-11-09):** the pre-built snpEff database's contig names vs the FASTA's — two more inputs, the `--snpeff_cache` directory (or `[]` → SKIPPED row) and `--snpeff_db`; the names are read from `snpEffectPredictor.bin` (snpEff 5.1 serialises its markers as gzipped tab-separated text, one `CHROMOSOME` line per contig) and the FASTA's are simplified as snpEff looks them up (the gawk twin of `snpeff_simple_name()`; keep the two identical). ERROR when no name is shared or `<db>/` / the database file is missing, WARN when some FASTA contigs are not in the database, OK with a note on the subset case (the test set: 4 of 17). |
+| `genbank_reference` | GenBank reference route, step 1 (2026-11-02; wired into `main.nf` by `--genbank` on 2026-11-09; the input GenBank is re-emitted untouched as `genbank` for publishing): `bin/genbank_to_reference.py` in the BioPython container derives from one GenBank the FASTA and the report GFF3 (LOCUS names, record order), the contig manifest, the per-genome `snpEff.config` (one `codonTable` line per contig whose `/transl_table` is not 1), the snpEff copy with VERSION := LOCUS, the names snpEff will store, and two rows of the input-checks table. **Contig-name wiring convention** (`genbank_reference_input.md` §3.2): every contig name in a FASTA, GFF3, config line or manifest is the LOCUS name; whoever hands snpEff a GenBank rewrites VERSION first; snpEff stores names *simplified* (leading chr/chromo/chromosome and leading zeros stripped) and simplifies a VCF's CHROM the same way, so every output keeps LOCUS. |
+| `snpeff_build` | GenBank reference route, step 2 (wired 2026-11-09): `snpEff build -genbank` in nf-core module shape (`meta.yml`) on snpEff's bundled config plus the per-genome codonTable lines; gates in `bin/snpeff_build_gates.sh` (protein check `Errors: 0`, stored contig names == the expected list), exit 65 on failure; the GenBank copy removed from the cache afterwards. Candidate for an nf-core `snpeff/build` contribution (inline the gate script then). |
 | `breseq` | breseq (`breseq/`, `breseq/summary_mqc/`) — Tier-2, AMP-v1 legacy, not released. |
 | `gdtools` | breseq's gdtools (`gdtools/convert/`) — legacy, with `breseq`. |
 
@@ -251,7 +273,7 @@ One row per file (`*.config` and `*.yml`, path relative to `conf/`), kept equal 
 | File | Role |
 |------|------|
 | `modules/manta_ale.config` | Manta overrides: `--exome` when `manta_high_sensitivity` (or `wes`); keeps upstream `manta.config` 0-diff. Pairs with `assets/manta_high_sensitivity.ini`. |
-| `modules/genbank_reference.config` | `GENBANK_REFERENCE` and `SNPEFF_BUILD` (2026-11-02): errorStrategy terminate + debug like the preflight task, publish of their input-checks tables and of `reference/<db>/` (inert until the `--genbank` route is wired). |
+| `modules/genbank_reference.config` | `GENBANK_REFERENCE` and `SNPEFF_BUILD` (2026-11-02, live since the `--genbank` route was wired on 2026-11-09): errorStrategy terminate + debug like the preflight task, publish of their input-checks tables and of `reference/<db>/` — the GenBank itself (`*.gb|gbk|gbff|genbank[.gz]`), FASTA, GFF3, manifest, the database directory and the build log, always, not only with `save_reference`. |
 | `modules/split_joint_vcf.config` | Per-caller (HC, Manta) rules for `SPLIT_JOINT_VCF`, keyed on `meta.variantcaller`; moved out of `joint_germline.config` so that upstream file only carries the VARIANTFILTRATION_FALLBACK change. |
 | `modules/preflight.config` | `PREFLIGHT_REFERENCE` (2026-09-28, included from `nextflow.config`): `errorStrategy 'terminate'` (the base strategy is `finish`; the script exits 65, outside the retry range), `debug` so its verdict lines reach the console, publish to `reports/preflight/`. |
 | `modules/mutation_report.config` | Process settings of the `mutation_report` subworkflow. |
@@ -275,9 +297,13 @@ The two legacy Seqera presets are gone — `params_seqera_test.yml`, the CEN.PK 
 last at `63eacf9` — the generated Launchpad box in `deploy/azure/seqera-sp/` is the live preset and
 `docs/usage/params_template.yml` the user-facing one.
 
-## `conf/` — MODIFIED (7, in place)
+## `conf/` — MODIFIED (9, in place)
 
 `base.config`, `modules/cnvkit.config` (ploidy on call+export; germline CNVKIT_CALL prefix),
+`modules/mpileup.config` and `modules/prepare_recalibration.config` (`intervals.simpleName` →
+`intervals.baseName` in five `ext.prefix` closures, 2026-11-09: `simpleName` cuts a dotted contig name such as
+`NC_001224.1` at the first dot, so two interval chunks of one contig could collide under a user BED; the other
+callers' configs already read `baseName`),
 `modules/joint_germline.config`
 (VARIANTFILTRATION_FALLBACK params only — the SPLIT_JOINT_VCF rules moved to `split_joint_vcf.config`; its selector also names the module's own `GATK4_VARIANTFILTRATION`, which is what the process runs as in `tests/variantfiltration_fallback.nf.test`), `modules/freebayes.config`,
 `modules/tiddit.config`, `modules/modules.config` (vcftools conditional `ext.when`),

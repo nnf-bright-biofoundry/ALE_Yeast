@@ -88,7 +88,7 @@ workflow MUTATION_REPORT {
     //
     // `[]` declares no file at all, so nothing has to stage (or exist) on a remote work dir —
     // the same idiom used for the absent coverage tracks below.
-    if (params.report_gff3) {
+    if (params.report_gff3 || params.genbank) {   // the --genbank route derives the GFF3 (GENBANK_REFERENCE)
         PREPARE_GFF3(gff3)
         ch_gff3_indexed = PREPARE_GFF3.out.gff3
         versions = versions.mix(PREPARE_GFF3.out.versions)

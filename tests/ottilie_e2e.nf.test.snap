@@ -1158,7 +1158,7 @@
                 "multiqc_fastqc_fastqc_raw.txt:md5,791e74343f22535c6893cfe344a6fd8b",
                 "multiqc_fastqc_fastqc_trimmed.txt:md5,cdff9595a55f749c1869f45cfd2cae18",
                 "multiqc_samtools_stats.txt:md5,2ac7fac2d03a8f9f2d7a923302307e47",
-                "multiqc_yamp_input_checks_table.txt:md5,d4c937522ea36f69aa5470cb89172aef",
+                "multiqc_yamp_input_checks_table.txt:md5,e67284bd28e0fe1ea81f3292ba333b0f",
                 "picard_MarkIlluminaAdapters_histogram.txt:md5,d41d8cd98f00b204e9800998ecf8427e",
                 "picard_MeanQualityByCycle_histogram.txt:md5,d41d8cd98f00b204e9800998ecf8427e",
                 "picard_MeanQualityByCycle_histogram_1.txt:md5,d41d8cd98f00b204e9800998ecf8427e",
@@ -1200,7 +1200,7 @@
                 "NODRUG-GM2.md.mosdepth.global.dist.txt:md5,eb307df40f199fcb669645491cabc45c",
                 "NODRUG-GM2.md.mosdepth.region.dist.txt:md5,b112f543a5bcd8e94ba58b9e2bfc14b6",
                 "NODRUG-GM2.md.mosdepth.summary.txt:md5,4f36a099cc200d9c373ec300d90426c6",
-                "preflight_reference_mqc.tsv:md5,65b33526f75f3cb2892fd49fcc8c30f9",
+                "preflight_reference_mqc.tsv:md5,970a6b276bb3d5db2cd554d2b97e2d24",
                 "preflight_samplesheet_params_mqc.tsv:md5,615c0f7c8e42c62be90cbb30baac9e5f",
                 "CBR110-15-R3a.cnvcall_snpEff.genes.txt:md5,798cbc952fd5421b30185394159c55e7",
                 "NODRUG-GM2.cnvcall_snpEff.genes.txt:md5,130536bf0237d7f3f746d32aaa32840a",
@@ -1271,6 +1271,6 @@
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-11-09T20:04:35.81293425"
+        "timestamp": "2026-11-09T22:33:15.09870256"
     }
 }

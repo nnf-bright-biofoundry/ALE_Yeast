@@ -22,8 +22,18 @@ nextflow_process {
     // rule is exercised; genes.gff3 — features on chrA and chrB plus an embedded ##FASTA section
     // (contig chrZ) that must be ignored; genes_renamed.gff3 — the same features on A and B (no
     // shared name); genes_partial.gff3 — chrA plus chrC, which has no FASTA sequence (OK with a note).
+    //
+    // Second check (2026-11-09, with the --genbank route): the FASTA's contig names against the
+    // pre-built snpEff database's (inputs 3 and 4: the --snpeff_cache directory and --snpeff_db). The
+    // database names are read from snpEffectPredictor.bin (gzipped text, one CHROMOSOME line per
+    // contig); the FASTA names are simplified the way snpEff looks them up. Cases: the shipped test
+    // cache against the 4-chromosome test FASTA (OK with a note: the SUBSET case, 13 extra contigs;
+    // needs data/ottilie/), and the 25 KB Mito-only fixture cache of the codon-table test against
+    // mito.fa (OK, exact), mito_chrz.fa (WARN: chrZ not in the database), ref.fa (ERROR: no shared
+    // name) and a wrong database name (ERROR: no such directory). [] skips the check (SKIPPED row).
 
     def FX       = "\$projectDir/tests/fixtures/preflight_reference"
+    def CACHE    = "\$projectDir/tests/fixtures/snpeff_cache_mito/with_codon_table"
     def rows     = { mqc -> path(mqc).readLines().findAll { !it.startsWith('#') } }
     def verdicts = { lines -> lines.findAll { it.contains('[yAMP preflight]') } }
 
@@ -34,6 +44,8 @@ nextflow_process {
                 """
                 input[0] = file("$FX/ref.fa")
                 input[1] = file("$FX/genes.gff3")
+                input[2] = []
+                input[3] = ''
                 """
             }
         }
@@ -42,8 +54,9 @@ nextflow_process {
             assertAll(
                 { assert process.success },
                 { assert table[0] == 'Check\tstatus\tdetail' },
-                { assert table.size() == 2 },
+                { assert table.size() == 3 },
                 { assert table[1] == 'FASTA vs GFF3 contig names\tOK\tall 2 contig name(s) of genes.gff3 are contigs of ref.fa (3 contigs)' },
+                { assert table[2] == 'snpEff cache vs FASTA contig names\tSKIPPED\tno pre-built snpEff cache to compare: snpEff is not in --tools, or the database is built from --genbank (its build gates compare the names)' },
                 { assert verdicts(process.stdout) == [] },
                 { assert path(process.out.mqc[0]).readLines().any { it.startsWith("# id: 'yamp_input_checks'") } },
                 { assert path(process.out.versions[0]).readLines().any { it =~ /gawk: \d+\.\d+/ } }
@@ -58,6 +71,8 @@ nextflow_process {
                 """
                 input[0] = file("$FX/ref.fa")
                 input[1] = []
+                input[2] = []
+                input[3] = ''
                 """
             }
         }
@@ -65,7 +80,7 @@ nextflow_process {
             def table = rows(process.out.mqc[0])
             assertAll(
                 { assert process.success },
-                { assert table.size() == 2 },
+                { assert table.size() == 3 },
                 { assert table[1].startsWith('FASTA vs GFF3 contig names\tSKIPPED\t--report_gff3 not set') },
                 { assert verdicts(process.stdout) == [] }
             )
@@ -79,6 +94,8 @@ nextflow_process {
                 """
                 input[0] = file("$FX/ref.fa")
                 input[1] = file("$FX/genes_renamed.gff3")
+                input[2] = []
+                input[3] = ''
                 """
             }
         }
@@ -100,6 +117,8 @@ nextflow_process {
                 """
                 input[0] = file("$FX/ref.fa")
                 input[1] = file("$FX/genes_partial.gff3")
+                input[2] = []
+                input[3] = ''
                 """
             }
         }
@@ -109,6 +128,119 @@ nextflow_process {
                 { assert process.success },
                 { assert table[1].startsWith('FASTA vs GFF3 contig names\tOK\t1 of 3 FASTA contig(s) annotated; 1 of 2 contig name(s) in genes_partial.gff3 have no sequence in ref.fa (chrC)') },
                 { assert verdicts(process.stdout) == [] }
+            )
+        }
+    }
+
+    test("shipped test cache vs the 4-chromosome test FASTA (ottilie profile): OK row noting the 13 extra contigs, nothing on the console") {
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = file(params.fasta)
+                input[1] = []
+                input[2] = file(params.snpeff_cache)
+                input[3] = params.snpeff_db
+                """
+            }
+        }
+        then {
+            def table = rows(process.out.mqc[0])
+            assertAll(
+                { assert process.success },
+                { assert table.size() == 3 },
+                { assert table[2] == 'snpEff cache vs FASTA contig names\tOK\tall 4 contig name(s) of S288C_R64_test.fa are chromosomes of snpEff database R64-1-1.105; the database has 13 more (II, III, IX, Mito, V, VI, VIII, X, XI, XII, …), as expected for a chromosome-subset reference' },
+                { assert verdicts(process.stdout) == [] }
+            )
+        }
+    }
+
+    test("Mito-only fixture cache vs a Mito-only FASTA: OK row, exact match") {
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = file("$FX/mito.fa")
+                input[1] = []
+                input[2] = file("$CACHE")
+                input[3] = 'S288C_mito'
+                """
+            }
+        }
+        then {
+            def table = rows(process.out.mqc[0])
+            assertAll(
+                { assert process.success },
+                { assert table[2] == 'snpEff cache vs FASTA contig names\tOK\tall 1 contig name(s) of mito.fa are the chromosomes of snpEff database S288C_mito (1)' },
+                { assert verdicts(process.stdout) == [] }
+            )
+        }
+    }
+
+    test("a FASTA contig the database lacks (Mito + chrZ vs the Mito-only cache): WARN on the console, run proceeds") {
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = file("$FX/mito_chrz.fa")
+                input[1] = []
+                input[2] = file("$CACHE")
+                input[3] = 'S288C_mito'
+                """
+            }
+        }
+        then {
+            def table = rows(process.out.mqc[0])
+            def out   = verdicts(process.stdout)
+            assertAll(
+                { assert process.success },
+                { assert table[2].startsWith('snpEff cache vs FASTA contig names\tWARN\t1 of 2 contig name(s) of mito_chrz.fa are not in snpEff database S288C_mito (chrZ): variants on them get no annotation') },
+                { assert out.size() == 1 },
+                { assert out[0].startsWith('[yAMP preflight] WARN  snpEff cache vs FASTA contig names: 1 of 2 contig name(s) of mito_chrz.fa are not in snpEff database S288C_mito (chrZ)') }
+            )
+        }
+    }
+
+    test("no FASTA contig in the database (ref.fa vs the Mito-only cache): ERROR, exit 65") {
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = file("$FX/ref.fa")
+                input[1] = []
+                input[2] = file("$CACHE")
+                input[3] = 'S288C_mito'
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.failed },
+                { assert process.errorReport.contains('terminated with an error exit status (65)') },
+                { assert (process.stdout + process.errorReport.readLines()).any {
+                    it.contains('[yAMP preflight] ERROR snpEff cache vs FASTA contig names: none of the 3 contig name(s) of ref.fa (chrA, chrB, plasmid) is a chromosome of snpEff database S288C_mito (Mito): every variant would be ERROR_CHROMOSOME_NOT_FOUND') } }
+            )
+        }
+    }
+
+    test("--snpeff_db names no directory of the cache: ERROR naming the directories found, exit 65") {
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = file("$FX/mito.fa")
+                input[1] = []
+                input[2] = file("$CACHE")
+                input[3] = 'R64-1-1.105'
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.failed },
+                { assert process.errorReport.contains('terminated with an error exit status (65)') },
+                { assert (process.stdout + process.errorReport.readLines()).any {
+                    it.contains('[yAMP preflight] ERROR snpEff cache vs FASTA contig names: no directory R64-1-1.105/ in the snpEff cache with_codon_table (--snpeff_db must name a database directory of --snpeff_cache; found: S288C_mito)') } }
             )
         }
     }

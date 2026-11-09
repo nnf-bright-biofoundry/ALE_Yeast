@@ -128,10 +128,12 @@ nextflow_pipeline {
                 { assert alignment_qc.containsAll(read_qc) && alignment_qc.containsAll(['picard', 'samtools', 'mosdepth']) && !alignment_qc.contains('bcftools') },
                 { assert mqc_sections.containsAll(alignment_qc) && mqc_sections.containsAll(['bcftools', 'snpeff']) },
                 { assert path("$outputDir/multiqc/multiqc_report.html").text.contains('<details><summary>Show the') },
-                // one input-checks table: the reference check's row + the DAG-build checks' rows, all OK on the Tier-1 recipe
+                // one input-checks table: the reference check's two rows + the DAG-build checks' rows, all OK on the
+                // Tier-1 recipe (the cache row since 2026-11-09: 4 test chromosomes against the 17-contig cache)
                 { assert input_checks.collect { it[0] } == ['FASTA vs GFF3 contig names', 'Parameters: Tier-1 recipe',
                                                            'Samplesheet: experiment ids', 'Samplesheet: input files listed once',
-                                                           'Samplesheet: ploidy and clonal flag per experiment'] },
+                                                           'Samplesheet: ploidy and clonal flag per experiment',
+                                                           'snpEff cache vs FASTA contig names'] },
                 { assert input_checks.every { it[1] == 'OK' } },
 
                 // Regression on task count + the software-versions manifest (Nextflow version stripped so

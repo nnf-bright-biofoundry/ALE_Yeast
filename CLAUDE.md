@@ -268,7 +268,14 @@ non-obvious rules, each learned by running it — full detail in the same doc:
 - **Launchers**: `bin/test_ottilie.sh` (minimal 2-sample test) · `bin/test_ottilie_blob.sh` (same test, `ottilie_test_ci` profile — inputs streamed from the public blob, **no local `data/ottilie/`**; `snpeff_cache` is a directory param and can't come from an https URL, so the script untars the published `snpeff_cache.tar.gz` locally first) · `docs/benchmarking/ottilie_xenobiotic_ale/03_pipeline/run_ottilie_pilot.sh` (full-depth **4-sample** run, same S288C data). The 2-sample test set is a **chromosome subset** (chr I/IV/VII/XV) of **2 of** the pilot's 4 `--save_mapped` CRAMs, extracted by `generate_test_data.sh` — not a read-subsample. Both use `-profile azureD4as,docker`.
 - **Resources config**: [`conf/azured4as.config`](conf/azured4as.config) (the `azureD4as` local-VM profile;
   use `-profile azureD4as`, no `-c` needed). See [`docs/dev-practices/compute_resources.md`](docs/dev-practices/compute_resources.md).
-- **SnpEff cache generation**: `docs/prepare_input/process_GeneBank/process_genbank_auto.sh` (GenBank in) or
+- **Reference from one GenBank (`--genbank`, wired 2026-11-09, `PLAN_next_checklist.md` §O):** the pipeline
+  derives FASTA, snpEff database (`snpeff_db` = the file's basename unless set), the report's GFF3 and a contig
+  manifest from the one file before alignment (`GENBANK_REFERENCE` + `SNPEFF_BUILD`, both in a QC-only run),
+  publishes `reference/<db>/` always, and errors when `--genbank` is given with `fasta`/`snpeff_cache`/`report_gff3`
+  or when neither route is given. Contig names = LOCUS, everywhere. Every profile, the contract test and the
+  launch form still use the pre-built route until O.5/O.6. Design + status:
+  [`docs/dev-practices/genbank_reference_input.md`](docs/dev-practices/genbank_reference_input.md).
+- **SnpEff cache generation (the pre-built route)**: `docs/prepare_input/process_GeneBank/process_genbank_auto.sh` (GenBank in) or
   `docs/prepare_input/build_snpeff_cache.sh` (FASTA + GFF3 in) — user page
   [`docs/usage/prepare_reference.md`](docs/usage/prepare_reference.md). `gen_cache.sh` retired 2026-09-08
   (hard-coded dev paths). snpEff **5.1** only; flat `<db>/` layout; `snpeff_cache` has **no default**.
@@ -375,7 +382,11 @@ terminates the run on error), reads the reference files themselves before alignm
 `report_gff3` contig names — error when none is shared; GFF3 contigs the FASTA lacks are noted in the
 OK row, not warned about (the test set is a chromosome subset of a fully annotated genome).
 Verdicts in a MultiQC table + `reports/preflight/`; a console line only on ERROR, so the
-zero-lines rule holds (`tests/preflight_reference.nf.test`, 4 cases). One check by decision; the others are roadmap rows.
+zero-lines rule holds (`tests/preflight_reference.nf.test`, 9 cases). Since 2026-11-09 a second check, the
+FASTA's contig names against the pre-built snpEff database's (read from `snpEffectPredictor.bin`, compared as
+snpEff looks them up): ERROR on no shared name or a wrong `snpeff_db`, WARN on FASTA contigs the database lacks,
+OK with a note on the subset case (the test set: 4 of 17), SKIPPED on the GenBank route, whose four rows (identifiers,
+genetic code, protein check, contig names) come from its two build tasks instead. The other candidates are roadmap rows.
 Since 2026-09-29 **every** check's verdict (OK/WARN; an ERROR stops the run before any report) is a
 row of one *yAMP input checks* table at the top of all three MultiQC reports — the DAG-build rows
 (`preflightTable()`) share the reference script's MultiQC id and header; keep the two identical.
@@ -383,7 +394,7 @@ row of one *yAMP input checks* table at the top of all three MultiQC reports —
 ### QC-first run (`--qc_only`)
 
 Since 2026-09-24: run 1 = the normal command + `--qc_only` stops after read QC (preflight, FastQC raw,
-fastp, FastQC on the fastp output, MultiQC, plus reference prep and the reference preflight task — 18 tasks / ~5 min on the test set),
+fastp, FastQC on the fastp output, MultiQC, plus reference prep and the reference preflight task — 18 tasks / ~5 min on the test set; 20 on the `--genbank` route, whose two reference tasks run here too),
 exits 0 and prints the follow-up; run 2 = the same command without the flag + `-resume <session id>`
 (every QC task cached; Platform: *Resume* with `qc_only` cleared). **The Launchpad entry opens with
 `qc_only` ticked** (user decision 2026-10-05): `qc_only: true` sits in the entry's params box

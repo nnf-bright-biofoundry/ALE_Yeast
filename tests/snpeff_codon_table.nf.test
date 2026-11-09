@@ -27,6 +27,12 @@ nextflow_process {
     // sensitive to (tests/fixtures/snpeff_cache_mito/, runtime files only, 25 KB each; recipe in
     // tests/fixtures/README.md). Cases 2 and 3 need no data/ottilie/.
     //
+    // Case 4 (2026-11-09, the --genbank route): the NCBI Mito record with LOCUS renamed to chrM goes
+    // through GENBANK_REFERENCE and SNPEFF_BUILD in the setup, then a VCF with CHROM chrM is annotated
+    // on that database. snpEff stores the contig as M (it strips a leading chr) and simplifies the
+    // VCF's CHROM the same way, while the codonTable line is keyed on the LOCUS name chrM: the variant
+    // must still come out synonymous, and the record keeps CHROM chrM. Measured 2026-11-09, pinned here.
+    //
     // Selector: the module runs here under its own name SNPEFF_SNPEFF, which is also the pipeline's,
     // so conf/modules/annotate.config applies (-nodownload -canon -v; ext.prefix) because the ottilie
     // profile's `tools` contains snpeff. The ext.prefix assertion pins that the config was read.
@@ -99,6 +105,51 @@ nextflow_process {
             assertAll(
                 { assert process.success },
                 { assert a == [ effect: 'stop_lost', impact: 'HIGH', gene: 'COX2', hgvs_c: 'c.168A>G', hgvs_p: 'p.Ter56Trpext*?' ] },
+            )
+        }
+    }
+
+    test("--genbank route, LOCUS chrM (stored as M, codonTable keyed chrM): CHROM chrM annotates synonymous p.Trp56Trp") {
+        setup {
+            run("GENBANK_REFERENCE") {
+                script "../modules/local/genbank_reference/main.nf"
+                process {
+                    """
+                    input[0] = file("${FIX}/genbank/mito_chrM.gbff")
+                    input[1] = 'chrm_test'
+                    """
+                }
+            }
+            run("SNPEFF_BUILD") {
+                script "../modules/local/snpeff_build/main.nf"
+                process {
+                    """
+                    input[0] = GENBANK_REFERENCE.out.snpeff_input
+                    input[1] = GENBANK_REFERENCE.out.expected_contigs
+                    """
+                }
+            }
+        }
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = [ [ id:'cox2_chrM', variantcaller:'haplotypecaller' ], file("${FIX}/cox2_chrM_73925.vcf") ]
+                input[1] = 'chrm_test'
+                input[2] = SNPEFF_BUILD.out.cache
+                """
+            }
+        }
+        then {
+            def vcf = process.out.vcf[0][1]
+            def a   = firstAnn(vcf)
+            def rec = path(vcf).text.readLines().find { !it.startsWith('#') }
+            assertAll(
+                { assert process.success },
+                { assert rec.startsWith('chrM\t73925\t') },                                    // CHROM keeps the LOCUS spelling
+                { assert a.effect == 'synonymous_variant' && a.impact == 'LOW' && a.gene == 'COX2' },
+                { assert a.hgvs_c == 'c.168A>G' && a.hgvs_p == 'p.Trp56Trp' },
+                { assert !path(vcf).text.contains('ERROR_CHROMOSOME_NOT_FOUND') },
             )
         }
     }

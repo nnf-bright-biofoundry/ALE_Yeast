@@ -22,6 +22,7 @@ process GENBANK_REFERENCE {
     val  db         // snpEff database name = the cache directory name
 
     output:
+    path genbank,                      emit: genbank           // the input, untouched: the run's reference record (published with the rest)
     path "${db}.fa",                   emit: fasta
     path "${db}.gff3",                 emit: gff3
     path "contig_manifest.csv",        emit: manifest

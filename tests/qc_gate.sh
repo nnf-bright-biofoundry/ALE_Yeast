@@ -9,9 +9,13 @@
 #
 #   tests/qc_gate.sh a                      part (a), minutes. Run 1 = the ottilie test set with --qc_only.
 #                                           The execution trace must contain EXACTLY the allow-listed
-#                                           processes below (read QC + reference preparation), and the
-#                                           completion message must name a report that exists and the
-#                                           session id to resume.
+#                                           processes below (read QC + reference preparation; plus the
+#                                           two --genbank reference tasks when the launch takes that
+#                                           route), and the completion message must name a report that
+#                                           exists and the session id to resume.
+#                                           QC_GATE_PARAMS_FILE=<file> adds -params-file to both launches
+#                                           (e.g. tests/qc_gate_genbank_params.yml: the test set on the
+#                                           --genbank route).
 #   tests/qc_gate.sh b <reference_outdir>   part (b), about one e2e. Run 2 = the same command without
 #                                           --qc_only, with -resume <run-1 session>. Every run-1 task
 #                                           except MULTIQC_READ_QC must be CACHED, the task list must equal the
@@ -31,8 +35,11 @@ part=${1:-}
 outdir=${QC_GATE_OUTDIR:-$here/output_qc_gate}
 workdir=${QC_GATE_WORKDIR:-$here/work_qc_gate}
 profile=${QC_GATE_PROFILE:-ottilie_test,docker}
+params_file=${QC_GATE_PARAMS_FILE:-}     # optional -params-file, e.g. one that switches the profile to --genbank
 launch=( nextflow run "$here/main.nf" -profile "$profile" -c "$here/tests/ottilie_nftest_resources.config"
          --outdir "$outdir" -w "$workdir" -ansi-log false )
+[ -n "$params_file" ] && launch+=( -params-file "$params_file" )
+cd "$here"   # repo-relative paths in a params file resolve against the launch directory; every output path above is absolute
 
 # The allow-list: every process a QC-only run of the ottilie profile may execute. Read QC (raw FastQC,
 # fastp, FastQC on its output, the read-QC MultiQC report — the alignment-QC and complete-QC ones are
@@ -57,6 +64,12 @@ ALLOW=(
   NFCORE_SAREK:SAREK:MUTATION_REPORT:PREPARE_GFF3
   NFCORE_SAREK:SAREK:PREFLIGHT_REFERENCE
 )
+# The --genbank reference route (main.nf) adds its two reference tasks, both before alignment and
+# needed by run 2 like the rest of reference preparation. Which route run 1 took is read from its
+# parameter summary (every non-default parameter is printed; genbank is null by default), so the
+# list stays exact on either route.
+ALLOW_GENBANK=( NFCORE_SAREK:GENBANK_REFERENCE NFCORE_SAREK:SNPEFF_BUILD )
+took_genbank_route() { sed 's/\x1b\[[0-9;]*m//g' "$1" | grep -qE '^[[:space:]]*genbank[[:space:]]+: [^[:space:]]'; }
 
 fail() { echo "qc_gate FAIL: $*" >&2; exit 1; }
 # newest execution trace of an outdir; an nf-test output dir keeps its trace next door in meta/trace.csv
@@ -92,6 +105,7 @@ case "$part" in
     trace=$(newest_trace "$outdir"); [ -n "$trace" ] || fail "no execution trace under $outdir/pipeline_info/"
     cp "$trace" "$outdir/.qc_gate_trace_run1.txt"
     ran=$(trace_processes "$trace")
+    took_genbank_route "$outdir/qc_gate_run1.log" && ALLOW+=( "${ALLOW_GENBANK[@]}" )
     allowed=$(printf '%s\n' "${ALLOW[@]}" | sort -u)
     stray=$(comm -23 <(echo "$ran") <(echo "$allowed"))
     missing=$(comm -13 <(echo "$ran") <(echo "$allowed"))

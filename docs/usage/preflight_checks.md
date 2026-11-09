@@ -45,6 +45,8 @@ checks, `preflight_reference_mqc.tsv` for the reference task.
 | **`--qc_only` with `--step` other than `mapping`** | Read QC is the first stage of the mapping step; a run starting later has no reads to QC ([`qc_first_run.md`](qc_first_run.md)). |
 | **`--qc_only` with `multiqc` in `--skip_tools`** | There would be no QC report to sign off. |
 | **`--qc_only` with `cleanup = true`** | Nextflow would delete the work directory when the QC run completes, so the follow-up run could not `-resume` it. |
+| **`--genbank` together with `--fasta`, `--snpeff_cache`, `--report_gff3` or `--download_cache`** | The GenBank route builds the FASTA, the snpEff database and the gene track from the one file; two sources for one reference would be resolved by a silent preference. Pass one route only (since 2026-11-09). |
+| **No reference: neither `--genbank` nor `--fasta`** (at a `--step` other than `annotate`) | Upstream sarek would start with an empty reference channel and every reference task would silently never run. |
 
 ## Warnings: the run proceeds
 
@@ -72,18 +74,43 @@ An ERROR stops the run at once (exit 65, no retry).
 | Check | ERROR: the run stops | OK, with a note | Skipped when |
 |---|---|---|---|
 | **FASTA vs GFF3 contig names.** The GFF3 given as `--report_gff3` is the gene track of the mutation report, so its contig names must be the FASTA's (the first token of each header). | No name is shared: the gene track would be empty and nothing else would complain. The typical cause is Ensembl-style `I` in one file and SGD/NCBI-style `chrI` in the other; rename the contigs of one file ([`prepare_reference.md`](prepare_reference.md)). | Some GFF3 contigs have no FASTA sequence: the row says which, and their features are simply not shown. This is the normal picture for a chromosome-subset reference such as the ottilie test set (4 chromosomes against the full-genome GFF3). FASTA contigs without annotation (cassettes, plasmids) are not reported. | `--report_gff3` is not set: the row reads SKIPPED. |
+| **snpEff cache vs FASTA contig names** (since 2026-11-09). snpEff annotates a variant only when its contig is a chromosome of the database; otherwise it logs `ERROR_CHROMOSOME_NOT_FOUND`, writes the record unannotated and nothing else complains. The database's names are read from `<snpeff_cache>/<snpeff_db>/snpEffectPredictor.bin`; the FASTA's are compared the way snpEff looks them up (a leading `chr` and leading zeros do not count: `chrI` matches a database built as `I`). | No FASTA contig is in the database (the annotation would be empty), or `--snpeff_db` names no directory of `--snpeff_cache` (the row lists the directories found; on an `az://` cache this is the first place the mistake is visible), or that directory holds no database file. | All FASTA contigs are in the database. When the database has more contigs than the FASTA, the row says which: the test set's 4 chromosomes against the 17-contig cache. **WARN** (the run proceeds, the line is printed) when some FASTA contigs are *not* in the database: variants on them get no annotation. | snpEff is not in `--tools`, or the reference comes from `--genbank` (the build's own gates compare the names, see below). |
 
 An embedded `##FASTA` section in the GFF3 (SGD and GenBank-converted files carry one) is ignored.
-**Not checked here**, by decision (one check shipped, more added as real input errors turn up): a
+**Not checked here**, by decision (more checks are added as real input errors turn up): a
 naming mismatch on part of the genome (`Mito` vs `chrM` with the chromosomes matching), which is visible only
-as the note, not an error; the
-SnpEff cache's contig names and version, where a mismatch fails, or annotates nothing, only at the
-annotation step ([`prepare_reference.md`](prepare_reference.md) → chromosome names); a
+as the note, not an error; the SnpEff database's *version* (an older build of the same genome annotates
+with older gene models, silently); a
 user-supplied `--fasta_fai` or `--dict` from another FASTA version, which fails inside GATK after alignment;
 and FASTA syntax (duplicate headers, CRLF line endings), which fails in reference preparation within minutes.
 
-Where they live: `validateAleRecipe()`, `validateAleSamplesheet()` and `validateQcOnly()` in
+### Reference from one GenBank (`--genbank`)
+
+On the GenBank route the reference files are *derived*, so the checks move to the two tasks that derive them
+(`GENBANK_REFERENCE`, then `SNPEFF_BUILD`; both before alignment, in a QC-only run too). Each writes its rows to
+the same table (`reports/preflight/preflight_genbank_mqc.tsv`, `snpeff_build_mqc.tsv`), prints WARN and ERROR
+lines with the `[yAMP preflight]` prefix, and an ERROR stops the run before any read is touched. The
+derived FASTA and GFF3 then go through the FASTA-vs-GFF3 row above like any other pair
+([`genbank_reference_input.md`](../dev-practices/genbank_reference_input.md) §5.5 for the rules in full):
+
+| Row | ERROR: the run stops | WARN: the run proceeds | OK |
+|---|---|---|---|
+| **GenBank contig identifiers.** The LOCUS name of each record is the contig name in every output. | Two records with the same LOCUS, or two that snpEff would store under one name (`chr1` and `1`); a LOCUS with whitespace, a colon, a pipe or a GFF3/VCF reserved character; a record without sequence. | A record without a versioned accession (no VERSION, or VERSION equal to LOCUS): a lab draft is a legitimate input, but a database registration will have to match the contig by sequence md5 (`reference/<db>/contig_manifest.csv`). The release test GenBank is such a file. | Every record carries an accession; the row lists the names, and which ones snpEff stores simplified. |
+| **GenBank genetic code.** The `/transl_table` of each contig's CDS becomes one `codonTable` line of the database's config: the only place snpEff takes the genetic code from. | A contig whose CDS state different tables; a table snpEff 5.1 has no codon table for. | An organelle contig (`/organelle` on its source feature) whose CDS state no table: the standard code is assumed, which organelles rarely use. Add `/transl_table=N` to the CDS and rerun. A nuclear contig without the qualifier is the standard code by the INSDC rule, silently. | The non-standard contigs and their tables are listed. |
+| **snpEff build: protein check.** snpEff translates every CDS and compares with the file's `/translation`: gene models and genetic code verified in one number. | `Errors > 0`, or no database written. | — | `Errors: 0`. SKIPPED when the file carries no `/translation` at all (a draft): the models are then unverified. |
+| **snpEff build: contig names.** The names stored in the database must equal the ones expected from the FASTA (after snpEff's simplification). | Any name missing from, or unexpected in, the database. | — | Equal. |
+
+Two start-up errors belong to the same route: `--genbank` given together with `--fasta`, `--snpeff_cache`,
+`--report_gff3` or `--download_cache` (one route only, never a silent preference), and no reference at all
+(neither `--genbank` nor `--fasta`; upstream sarek would start and every reference task would silently never run).
+
+Where they live: `validateAleRecipe()`, `validateAleSamplesheet()`, `validateQcOnly()` and
+`validateReferenceRoute()` in
 `subworkflows/local/utils_nfcore_sarek_pipeline/main.nf` (their table rows: `preflightTable()`, whose
 header must stay identical to the reference script's), test `tests/preflight.nf.test`; the reference
 task in `modules/local/preflight_reference/` runs `bin/preflight_reference.sh` (gawk), configured by
-`conf/modules/preflight.config`, test `tests/preflight_reference.nf.test`.
+`conf/modules/preflight.config`, test `tests/preflight_reference.nf.test`; the GenBank rows in
+`bin/genbank_to_reference.py` (`modules/local/genbank_reference/`) and `bin/snpeff_build_gates.sh`
+(`modules/local/snpeff_build/`), configured by `conf/modules/genbank_reference.config`, tests
+`tests/genbank_reference.nf.test`, `tests/snpeff_build.nf.test` and, for the whole route in a QC-only
+run, `tests/genbank_route.nf.test`.

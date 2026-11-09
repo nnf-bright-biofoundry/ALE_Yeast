@@ -1,0 +1,11 @@
+# tests/qc_gate.sh on the --genbank reference route: QC_GATE_PARAMS_FILE=tests/qc_gate_genbank_params.yml tests/qc_gate.sh a
+# Also a launcher's params file for a full run of the test set on this route: nextflow run main.nf
+# -profile ottilie_test,azureD4as,docker -params-file tests/qc_gate_genbank_params.yml --outdir <dir>.
+# The path below is repo-relative: launch from the repo root (the gate script does so itself).
+# The ottilie_test profile's three pre-built reference params are cleared and the 4-chromosome test
+# GenBank (same genome, LOCUS I/IV/VII/XV) takes their place; snpeff_db is derived from its name.
+genbank: data/ottilie/S288C_reference_test/S288C_R64_test.gb
+fasta: null
+snpeff_cache: null
+snpeff_db: null
+report_gff3: null

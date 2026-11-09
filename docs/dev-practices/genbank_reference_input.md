@@ -1,6 +1,6 @@
 # Reference genome from one GenBank file: design note
 
-**Status: design agreed 2026-11-02; O.1 (the codon-table line in today's caches, §4.3) and O.2 (the two build tasks of §5.1, unwired, module-tested) done the same day; the wiring (§6) and everything after it not implemented.** Opened 2026-10-29 from a question about why
+**Status: design agreed 2026-11-02; O.1 (the codon-table line in today's caches, §4.3) and O.2 (the two build tasks of §5.1, module-tested) done the same day; O.3, the wiring, done 2026-11-09: `--genbank` runs both tasks before alignment, fills upstream's `fasta` / `snpeff_cache` / `report_gff3` channels and `snpeff_db`, both routes at once or neither is a start-up error, `reference/<db>/` is published, the pre-built route gained the cache-vs-FASTA preflight row, the four verdict rows reach the input-checks table in a QC-only run (`tests/genbank_route.nf.test`). Not yet: the output scripts (§5.4, §5.6; O.4), the contract test on this route (§7; O.5), the launch form (§6; O.6), the user docs (O.7) and `ottilie/v2` (O.8).** Opened 2026-10-29 from a question about why
 the pipeline takes FASTA + SnpEff cache where the legacy AMP v1 pipeline took a single GenBank; reviewed
 decision by decision on 2026-11-02 with the launch form and a future ALEdb registration in view. Every
 number here was measured with the pipeline's own snpEff image (`quay.io/biocontainers/snpeff:5.1--hdfd78af_2`)
@@ -274,7 +274,7 @@ for O.8, so cloud runs keep the standard code on Mito until then.
 The synthetic COX2 variant of §4.2 is the test: one VCF line, annotate with the cache under test using
 `-dataDir` only, expect `synonymous_variant` and `p.Trp56Trp`. It fails on any cache that lost the line and on
 any snpEff upgrade that changes where the config is read. It runs in seconds in the snpEff container.
-Implemented 2026-11-02 as `tests/snpeff_codon_table.nf.test` (3 cases, ~85 s): the shipped cache through the
+Implemented 2026-11-02 as `tests/snpeff_codon_table.nf.test` (3 cases, ~85 s; a 4th on 2026-11-09 runs the `--genbank` chain on a record renamed `chrM`): the shipped cache through the
 pipeline's own module and config, plus a committed 25 KB Mito-only cache with and without the line, the
 latter the negative control (`stop_lost p.Ter56Trpext*?`), so the mechanism is tested on a fresh clone and
 the shipped artefact on the dev machine.
@@ -353,10 +353,12 @@ two identical), written by the extract task from the manifest, so it runs under 
   or an identifier contains a colon, pipe or
   whitespace. Those break the SV mate parser (`sv_cohort_matrix.py`), the IGV cross-links
   (`custom_template_sample.html`) and samtools region strings, so the run stops. Dots are safe everywhere
-  (checked 2026-11-02 across `bin/`, the report code and the interval logic); the one hazard is
-  `intervals.simpleName` in four configs, which cuts at the first dot and could collide two interval chunks of
-  one contig under a user BED. Whole-contig intervals built from the `.fai` never collide. A one-line
-  `baseName` fix belongs in the same series.
+  (checked 2026-11-02 across `bin/`, the report code and the interval logic); the one hazard was
+  `intervals.simpleName`, which cuts at the first dot and could collide two interval chunks of one contig
+  under a user BED. Whole-contig intervals built from the `.fai` never collide. Fixed 2026-11-09 (O.3): the
+  five `ext.prefix` closures in `conf/modules/mpileup.config` and `prepare_recalibration.config` and the
+  interval-name meta of `bam_variant_calling_sentieon_dnascope` read `baseName`, as every other caller did
+  ("four configs" in the 2026-11-02 count was two configs and one subworkflow).
 
 A second row, *GenBank genetic code* (decision 18): **OK** listing the non-standard contigs and their snpEff
 table names; **WARN** for an organelle contig whose CDS state no `/transl_table` (standard assumed, with the
@@ -364,6 +366,14 @@ instruction to add the qualifier and rerun); **ERROR** when one contig's CDS sta
 table snpEff 5.1 has no name for. The build task adds two rows of its own, *snpEff build: protein check*
 (OK / SKIPPED without `/translation` / ERROR) and *snpEff build: contig names* (§5.3). All four share the
 table id and header of `PREFLIGHT_REFERENCE`; keep the copies identical.
+
+The pre-built route got the mirror image on 2026-11-09: `PREFLIGHT_REFERENCE` now also compares the FASTA's
+contig names with the database's (*snpEff cache vs FASTA contig names*; the names come from
+`snpEffectPredictor.bin`, gzipped tab-separated text with one `CHROMOSOME` line per contig, and the FASTA's
+are simplified the way snpEff looks them up). It is a **subset** rule, as O.1 found: the release test set is 4
+chromosomes against the 17-contig cache (OK, with the 13 extra contigs noted); FASTA contigs the database
+lacks are a WARN (their variants silently stay unannotated); no shared name, or no `<db>/` directory or
+database file in the cache, is an ERROR. On the GenBank route the row reads SKIPPED: gate 2 is that check.
 
 ### 5.6 Contig order: the GenBank's record order, everywhere
 

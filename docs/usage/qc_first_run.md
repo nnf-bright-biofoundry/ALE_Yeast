@@ -137,8 +137,9 @@ later "stop after alignment" level would be a separate parameter.
 Runs (and is cached for run 2): preflight checks · the reference preflight task (FASTA vs GFF3 contig
 names, [`preflight_checks.md`](preflight_checks.md) → *Reference files*) · FastQC on the raw reads ·
 fastp · FastQC on the fastp output · the read-QC MultiQC report · reference preparation (bwa index, `.fai`, sequence
-dictionary, intervals, the CNVKit flat reference) · the GFF3 index for the mutation report. On the
-ottilie test set that is 18 tasks and about five minutes (measured 2026-09-28).
+dictionary, intervals, the CNVKit flat reference) · the GFF3 index for the mutation report · on the
+`--genbank` route, the two tasks that derive the reference from the GenBank. On the
+ottilie test set that is 18 tasks and about five minutes (measured 2026-09-28; 20 tasks on the GenBank route).
 
 Does **not** run: alignment and everything downstream (duplicate marking, every caller, annotation,
 the mutation report). **breseq** (Tier-2, `--tools breseq --genbank …`) reads the fastp output

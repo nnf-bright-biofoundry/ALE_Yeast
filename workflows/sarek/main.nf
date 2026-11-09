@@ -159,7 +159,11 @@ workflow SAREK {
         vep_fasta
         vep_genome
         vep_species
-        preflight_mqc   // the DAG-build input checks as a MultiQC table (PIPELINE_INITIALISATION)
+        preflight_mqc      // the DAG-build input checks as a MultiQC table (PIPELINE_INITIALISATION)
+        report_gff3        // value: the mutation report's gene-track GFF3, or [] — --report_gff3, or GENBANK_REFERENCE's on the --genbank route
+        reference_mqc      // channel: input-checks rows of the --genbank route's two reference tasks (empty on the pre-built route)
+        reference_versions // channel: their versions.yml
+        snpeff_db          // string: the snpEff database name (--snpeff_db, or the GenBank's basename); null when snpEff is not run
 
     main:
 
@@ -171,18 +175,29 @@ workflow SAREK {
     reports_alignment_qc = Channel.empty()   // ... and when duplicate marking + CRAM QC end (alignment-QC report)
     versions             = Channel.empty()
 
-    // The DAG-build input checks join the reference check's rows in one "yAMP input checks" table
-    reports  = reports.mix(preflight_mqc)
+    // The DAG-build input checks and the --genbank route's reference-task rows join the reference
+    // check's rows in one "yAMP input checks" table
+    reports  = reports.mix(preflight_mqc).mix(reference_mqc)
+    versions = versions.mix(reference_versions)
 
-    // yAMP preflight, task level: do the reference files agree with each other? Today: the FASTA vs the
-    // mutation-report GFF3 contig names (bin/preflight_reference.sh; docs/usage/preflight_checks.md).
-    // A task rather than a DAG-build check so cloud paths are staged; unconditional, so it runs at
-    // every --step and in the QC-only run (allow-listed in tests/qc_gate.sh). Its MultiQC table is its
-    // only consumer: no other task's inputs — hence hashes — changed when it was added. On a failed
-    // check its own config block (conf/modules/preflight.config) terminates the run.
+    // yAMP preflight, task level: do the reference files agree with each other? The FASTA vs the
+    // mutation-report GFF3 contig names, and the FASTA vs the pre-built snpEff database's
+    // (bin/preflight_reference.sh; docs/usage/preflight_checks.md). A task rather than a DAG-build
+    // check so cloud paths are staged; unconditional, so it runs at every --step and in the QC-only run
+    // (allow-listed in tests/qc_gate.sh). Its MultiQC table is its only consumer: no other task's
+    // inputs — hence hashes — change through it. On a failed check its own config block
+    // (conf/modules/preflight.config) terminates the run. The cache goes in only on the pre-built route
+    // with snpEff enabled (the same condition that initialised the cache channel in main.nf; without it
+    // snpeff_cache is a plain []): on the --genbank route SNPEFF_BUILD's gates compare the names.
+    snpeff_enabled = params.tools && (params.tools.split(',').contains('snpeff') || params.tools.split(',').contains('merge'))
+    preflight_snpeff_cache = (params.snpeff_cache && snpeff_enabled && !params.genbank && !params.download_cache)
+        ? snpeff_cache.map { meta, cache -> cache }
+        : Channel.value([])
     PREFLIGHT_REFERENCE(
         fasta.map { meta, f -> f },
-        params.report_gff3 ? file(params.report_gff3, checkIfExists: true) : []
+        report_gff3,
+        preflight_snpeff_cache,
+        snpeff_db ?: ''
     )
     reports  = reports.mix(PREFLIGHT_REFERENCE.out.mqc)
     versions = versions.mix(PREFLIGHT_REFERENCE.out.versions)
@@ -919,7 +934,7 @@ workflow SAREK {
                 vcf_to_annotate.map{meta, vcf -> [ meta + [ file_name: vcf.baseName ], vcf ] },
                 vep_fasta,
                 params.tools,
-                params.snpeff_db,
+                snpeff_db,
                 snpeff_cache,
                 vep_genome,
                 vep_species,
@@ -1046,8 +1061,9 @@ workflow SAREK {
                 // report_gff3 is OPTIONAL — without it the igv-reports still build, just with
                 // no gene-annotation track. `[]` (not null, not a sentinel file) is the
                 // Nextflow idiom for an absent optional path: it declares no file at all, so
-                // there is nothing for a remote work dir to stage.
-                params.report_gff3 ? file(params.report_gff3, checkIfExists: true) : []
+                // there is nothing for a remote work dir to stage. The value channel comes from
+                // main.nf: --report_gff3, or the GFF3 GENBANK_REFERENCE derived on the --genbank route.
+                report_gff3
             )
         }
 

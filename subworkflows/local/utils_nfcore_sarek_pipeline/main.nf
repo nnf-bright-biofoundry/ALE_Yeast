@@ -93,6 +93,7 @@ workflow PIPELINE_INITIALISATION {
         params.dragmap,
         params.fasta,
         params.fasta_fai,
+        params.genbank,
         params.germline_resource,
         params.germline_resource_tbi,
         params.input,
@@ -156,7 +157,7 @@ if (params.tools && (params.tools.split(',').contains('vep')    || params.tools.
         params.build_only_index,
         params.download_cache,
         params.dbsnp,
-        params.fasta,
+        params.fasta ?: params.genbank,     // read-group DS: only; the GenBank route has no --fasta
         params.germline_resource,
         params.intervals,
         params.joint_germline,
@@ -170,8 +171,8 @@ if (params.tools && (params.tools.split(',').contains('vep')    || params.tools.
         params.seq_center,
         params.seq_platform,
         params.skip_tools,
-        params.snpeff_cache,
-        params.snpeff_db,
+        params.snpeff_cache ?: params.genbank,  // its "snpeff without a cache" guard: on the GenBank route the database is built from the file
+        params.snpeff_db ?: genbankDbName(params.genbank),
         params.step,
         params.tools,
         params.umi_read_structure,
@@ -248,7 +249,38 @@ workflow PIPELINE_COMPLETION {
 //
 def validateInputParameters() {
     genomeExistsError()
-    return validateAleRecipe() + validateQcOnly()
+    return validateAleRecipe() + validateQcOnly() + validateReferenceRoute()
+}
+
+//
+// Reference route (docs/dev-practices/genbank_reference_input.md §6): ONE GenBank (--genbank; the
+// FASTA, the snpEff database and the report's gene track are built from it before alignment), or
+// upstream's pre-built files (--fasta, --snpeff_cache, --snpeff_db, --report_gff3). Both at once is an
+// error naming both, never a silent preference (decision 11); neither is an error too — upstream
+// starts with an empty fasta channel and every reference task silently never runs.
+//
+def validateReferenceRoute() {
+    if (params.genbank) {
+        def also = [ fasta: params.fasta, snpeff_cache: params.snpeff_cache, report_gff3: params.report_gff3,
+                     download_cache: params.download_cache ]
+                   .findAll { _k, v -> v }.keySet().collect { "--${it}" }
+        if (also) {
+            error("[yAMP preflight] --genbank together with ${also.join(', ')}: the GenBank route builds the FASTA, the snpEff database and the report's gene track from the one file, so the pre-built reference parameters cannot be given with it. Pass one route only (docs/usage/prepare_reference.md).")
+        }
+    } else if (!params.fasta && params.step != 'annotate') {
+        error("[yAMP preflight] no reference genome: pass --genbank <genome.gb|.gbk|.gbff[.gz]> (the FASTA, snpEff database and gene track are built from it), or the pre-built files --fasta, --snpeff_cache with --snpeff_db, --report_gff3 (docs/usage/prepare_reference.md).")
+    }
+    return []
+}
+
+//
+// The snpEff database name of the GenBank route (decision 10): the file's basename without its GenBank
+// extension (.gb, .gbk, .gbff, .genbank, optionally .gz). --snpeff_db overrides it. It names the cache
+// directory, reference/<db>/ and the reports/snpeff/ paths; nothing in a VCF. Null without --genbank.
+//
+def genbankDbName(genbank) {
+    if (!genbank) return null
+    return genbank.toString().replaceAll(/.*\//, '').replaceFirst(/\.(gb|gbk|gbff|genbank)(\.gz)?$/, '')
 }
 
 //

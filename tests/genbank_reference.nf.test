@@ -23,7 +23,9 @@ nextflow_process {
     // mito_ncbi.gbff.gz its gzip; mito_draft.gb a lab-style copy (LOCUS mito_draft, no ACCESSION or
     // VERSION, /chromosome="M", no /transl_table and no /translation); the synthetic_*.gb files are
     // written by make_fixtures.py: two records with hand-computable CDS phases, a duplicate LOCUS, mixed
-    // tables on one contig, and a chr1 / 1 name collision.
+    // tables on one contig, and a chr1 / 1 name collision; mito_chrM.gbff (2026-11-09) is the NCBI record
+    // with LOCUS renamed to chrM and everything else kept, the user-renamed case: snpEff stores the
+    // contig as M while the codonTable line stays keyed on the LOCUS name.
 
     def FX       = "\$projectDir/tests/fixtures/genbank"
     def rows     = { mqc -> path(mqc).readLines().findAll { !it.startsWith('#') } }
@@ -253,6 +255,36 @@ nextflow_process {
                 { assert process.errorReport.contains('terminated with an error exit status (65)') },
                 { assert (process.stdout + process.errorReport.readLines()).any {
                     it.contains('LOCUS names snpEff would store under one simplified name (it strips a leading chr/chromo/chromosome and leading zeros): 1 and chr1') } },
+            )
+        }
+    }
+
+    test("LOCUS chrM with the NCBI accession kept: OK rows, snpEff stores M, codonTable line keyed on chrM") {
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = file("$FX/mito_chrM.gbff")
+                input[1] = 'chrm'
+                """
+            }
+        }
+        then {
+            def table = rows(process.out.mqc[0])
+            def dir   = process.out.snpeff_input[0][1]
+            assertAll(
+                { assert process.success },
+                { assert verdicts(process.stdout) == [] },
+                { assert table[1] == 'GenBank contig identifiers\tOK\tmito_chrM.gbff: 1 record(s), every one with a versioned accession; contig names are the LOCUS names (chrM). snpEff stores 1 name(s) simplified (chrM as M); VCFs, tables and reports keep the LOCUS name' },
+                { assert table[2] == 'GenBank genetic code\tOK\tmito_chrM.gbff: chrM=3 (Yeast_Mitochondrial); 0 contig(s) standard' },
+                { assert path(process.out.fasta[0]).readLines()[0] == '>chrM' },
+                { assert manifest(process.out.manifest[0])[1] == 'chrM,NC_001224.1,85779,71c39cf065b8d574f636b654c274cf1b,mitochondrion,,3,1' },
+                { assert path("${dir}/snpEff.config").readLines() == [ 'chrm.genome : chrm', 'chrm.chrM.codonTable : Yeast_Mitochondrial' ] },
+                { assert path("${dir}/genes.gbk").readLines().find { it.startsWith('VERSION') } == 'VERSION     chrM' },
+                { assert path(process.out.expected_contigs[0]).readLines() == [ 'M' ] },
+                // the GenBank itself is re-emitted, untouched, for publishing as the run's reference record
+                { assert process.out.genbank[0].endsWith('/mito_chrM.gbff') },
+                { assert path(process.out.genbank[0]).readLines().find { it.startsWith('VERSION') } == 'VERSION     NC_001224.1' },
             )
         }
     }

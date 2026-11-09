@@ -36,7 +36,7 @@ workflow BAM_VARIANT_CALLING_SENTIEON_DNASCOPE {
         .map{ meta, cram, crai, intervals, num_intervals -> [
             meta + [
                 num_intervals:num_intervals,
-                intervals_name:intervals.simpleName,
+                intervals_name:intervals.baseName,
                 variantcaller:'sentieon_dnascope'],
             cram,
             crai,

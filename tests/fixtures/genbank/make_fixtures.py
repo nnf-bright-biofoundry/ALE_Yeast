@@ -41,6 +41,19 @@ for l in txt.splitlines():
 open(f'{F}/mito_draft.gb', 'w').write('\n'.join(out) + '\n')
 print('mito_draft: translations left', open(f'{F}/mito_draft.gb').read().count('/translation='), 'transl_table left', open(f'{F}/mito_draft.gb').read().count('/transl_table'))
 
+# ---- the NCBI Mito record renamed by a user to LOCUS chrM, everything else kept (ACCESSION, VERSION
+#      NC_001224.1, /transl_table=3, /translation): snpEff stores the contig as "M" (it strips a
+#      leading "chr"), the codonTable line is keyed on the LOCUS name chrM, and a VCF with CHROM chrM
+#      must still annotate with the mitochondrial code (measured 2026-11-09; pinned by
+#      tests/snpeff_codon_table.nf.test and tests/genbank_reference.nf.test)
+out = []
+for l in txt.splitlines():
+    if l.startswith('LOCUS'):
+        l = l.replace('NC_001224', 'chrM     ', 1)
+    out.append(l)
+open(f'{F}/mito_chrM.gbff', 'w').write('\n'.join(out) + '\n')
+print('mito_chrM:', [l for l in out if l.startswith('LOCUS') or l.startswith('VERSION')])
+
 # ---- synthetic two-record file (BioPython-written, deterministic)
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord

@@ -218,6 +218,14 @@ Full column reference and conventions:
 
 ### Preparing a reference (GenBank, or FASTA + GFF3)
 
+**One GenBank, no preparation (since 2026-11-09).** `--genbank genome.gb` (also `.gbk`, `.gbff`, gzipped) replaces
+`--fasta`, `--snpeff_cache`, `--snpeff_db` and `--report_gff3`: the pipeline derives the FASTA, the SnpEff
+database and the report's gene track from the file before alignment and publishes them under
+`reference/<db>/` (`<db>` = the file's basename). Contig names are the LOCUS names. Giving both routes is a
+start-up error. Not yet in the Seqera launch form; the user guide follows
+([`docs/dev-practices/genbank_reference_input.md`](docs/dev-practices/genbank_reference_input.md)). The
+steps below prepare the files for the pre-built route.
+
 Full page, both paths, rules and known limitations: [`docs/usage/prepare_reference.md`](docs/usage/prepare_reference.md).
 
 **From GenBank.** `docs/prepare_input/process_GeneBank/process_genbank_auto.sh` converts a `.gbk`/`.gb` file into

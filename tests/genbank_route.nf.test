@@ -1,0 +1,136 @@
+nextflow_pipeline {
+
+    name "GenBank reference route (--genbank)"
+    script "../main.nf"
+    tag "ottilie"
+    tag "pipeline"
+
+    // Run with:  nf-test test -c tests/nf-test-ottilie.config tests/genbank_route.nf.test
+    //
+    // The reference given as ONE GenBank (docs/dev-practices/genbank_reference_input.md §5, §6), on the
+    // ottilie test set: the profile's three pre-built reference params are cleared and the 4-chromosome
+    // test GenBank (data/ottilie/S288C_reference_test/S288C_R64_test.gb; LOCUS I, IV, VII, XV with
+    // VERSION equal to LOCUS, the renamed test subset) takes their place; snpeff_db is derived from its
+    // name. Run as a QC-only run (about 5 min): GENBANK_REFERENCE and SNPEFF_BUILD run before alignment
+    // by construction, so the QC-only run already produces reference/<db>/ and the input-checks rows,
+    // and the task list must be exactly tests/qc_gate.sh's allow-list plus the two reference tasks (the
+    // gate's own property on this route). The full run on this route is the contract test's job once
+    // it moves to the GenBank route; until then a launch from the repo root with
+    // -params-file tests/qc_gate_genbank_params.yml is the way to run it.
+    //
+    // Two start-up errors (validateReferenceRoute): both routes at once, and no reference at all. They
+    // fire at DAG build, before any task, so the cases take seconds.
+
+    def root   = System.getProperty('user.dir')
+    def GB     = "$root/data/ottilie/S288C_reference_test/S288C_R64_test.gb"
+    def rows   = { f -> path(f).readLines().findAll { !it.startsWith('#') } }
+    // every process name of nf-test's execution trace (meta/trace.csv next to the output dir), tag stripped
+    def processes = { dir ->
+        def lines = new File("$dir/meta/trace.csv").readLines()
+        def i = lines[0].split('\t').toList().indexOf('name')
+        lines.drop(1).collect { it.split('\t')[i].replaceAll(/ \(.*$/, '') }.unique().sort()
+    }
+    def QC_ONLY_ALLOW = [
+        'NFCORE_SAREK:GENBANK_REFERENCE',
+        'NFCORE_SAREK:PREPARE_GENOME:BWAMEM1_INDEX',
+        'NFCORE_SAREK:PREPARE_GENOME:GATK4_CREATESEQUENCEDICTIONARY',
+        'NFCORE_SAREK:PREPARE_GENOME:SAMTOOLS_FAIDX',
+        'NFCORE_SAREK:PREPARE_INTERVALS:BUILD_INTERVALS',
+        'NFCORE_SAREK:PREPARE_INTERVALS:CREATE_INTERVALS_BED',
+        'NFCORE_SAREK:PREPARE_INTERVALS:TABIX_BGZIPTABIX_INTERVAL_COMBINED',
+        'NFCORE_SAREK:PREPARE_INTERVALS:TABIX_BGZIPTABIX_INTERVAL_SPLIT',
+        'NFCORE_SAREK:PREPARE_REFERENCE_CNVKIT:CNVKIT_ANTITARGET',
+        'NFCORE_SAREK:PREPARE_REFERENCE_CNVKIT:CNVKIT_REFERENCE',
+        'NFCORE_SAREK:SAREK:FASTP',
+        'NFCORE_SAREK:SAREK:FASTQC',
+        'NFCORE_SAREK:SAREK:FASTQC_TRIMMED_QC:FASTQC_TRIMMED',
+        'NFCORE_SAREK:SAREK:MULTIQC_READ_QC',
+        'NFCORE_SAREK:SAREK:MUTATION_REPORT:PREPARE_GFF3',
+        'NFCORE_SAREK:SAREK:PREFLIGHT_REFERENCE',
+        'NFCORE_SAREK:SNPEFF_BUILD',
+    ]
+
+    test("QC-only run on the test GenBank: the two reference tasks run, reference/<db>/ is published, the input-checks rows reach the read-QC report") {
+        when {
+            params {
+                outdir       = "$outputDir"
+                genbank      = "$GB"
+                fasta        = null
+                snpeff_cache = null
+                snpeff_db    = null
+                report_gff3  = null
+                qc_only      = true
+            }
+        }
+        then {
+            def ref     = "$outputDir/reference/S288C_R64_test"
+            def cache   = "$ref/snpeff_cache/S288C_R64_test"
+            def man     = rows("$ref/contig_manifest.csv")
+            def gb_rows = rows("$outputDir/reports/preflight/preflight_genbank_mqc.tsv")
+            def bd_rows = rows("$outputDir/reports/preflight/snpeff_build_mqc.tsv")
+            def pf_rows = rows("$outputDir/reports/preflight/preflight_reference_mqc.tsv")
+            def report  = path("$outputDir/multiqc/yAMP-read-QC_multiqc_report.html").text
+            assertAll(
+                { assert workflow.success },
+                { assert processes(launchDir) == QC_ONLY_ALLOW },
+                // reference/<db>/: the GenBank itself, FASTA, GFF3, manifest, the database and its build log
+                { assert path("$ref/S288C_R64_test.gb").exists() },
+                { assert path("$ref/S288C_R64_test.fa").readLines().findAll { it.startsWith('>') } == [ '>I', '>IV', '>VII', '>XV' ] },
+                { assert path("$ref/S288C_R64_test.gff3").readLines().findAll { !it.startsWith('#') }.every { it.split('\t')[0] in [ 'I', 'IV', 'VII', 'XV' ] } },
+                { assert man[0] == 'contig,version,length,md5,type,chromosome,transl_table,order' },
+                { assert man.size() == 5 },
+                { assert man[1].startsWith('I,,230218,')    && man[1].endsWith(',1') },
+                { assert man[2].startsWith('IV,,1531933,')  && man[2].endsWith(',2') },
+                { assert man[3].startsWith('VII,,1090940,') && man[3].endsWith(',3') },
+                { assert man[4].startsWith('XV,,1091291,')  && man[4].endsWith(',4') },
+                { assert path("$cache/snpEffectPredictor.bin").exists() },
+                { assert path("$cache/snpEff.config").readLines() == [ 'S288C_R64_test.genome : S288C_R64_test' ] },
+                { assert !path("$cache/genes.gbk").exists() },
+                { assert path("$ref/S288C_R64_test.snpeff_build.log").text.contains('Protein check:') },
+                // the four reference rows of the input-checks table (the test GenBank has no versioned accession: WARN)
+                { assert gb_rows[1].startsWith('GenBank contig identifiers\tWARN\tS288C_R64_test.gb: 4 of 4 record(s) carry no versioned accession (VERSION missing or equal to LOCUS): I, IV, VII, XV.') },
+                { assert gb_rows[2] == 'GenBank genetic code\tOK\tS288C_R64_test.gb: no contig uses a non-standard code; 4 contig(s) standard (4 by the INSDC default, no /transl_table)' },
+                { assert bd_rows[1].startsWith('snpEff build: protein check\tOK\t') && bd_rows[1].contains('(Errors: 0)') },
+                { assert bd_rows[2] == 'snpEff build: contig names\tOK\t4 contig name(s) in the cache, equal to the expected list' },
+                // the reference preflight on the derived files: GFF3 agrees, the cache row is SKIPPED on this route
+                { assert pf_rows[1] == 'FASTA vs GFF3 contig names\tOK\tall 4 contig name(s) of S288C_R64_test.gff3 are contigs of S288C_R64_test.fa (4 contigs)' },
+                { assert pf_rows[2].startsWith('snpEff cache vs FASTA contig names\tSKIPPED\t') },
+                // the rows are in the read-QC report, and the WARN reached the console
+                { assert report.contains('GenBank contig identifiers') && report.contains('snpEff build: protein check') },
+                { assert workflow.stdout.any { it.contains('[yAMP preflight] WARN  GenBank contig identifiers: S288C_R64_test.gb: 4 of 4 record(s) carry no versioned accession') } },
+            )
+        }
+    }
+
+    test("--genbank together with the pre-built params (the ottilie profile's): start-up error naming them") {
+        when {
+            params {
+                outdir  = "$outputDir"
+                genbank = "$GB"
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.failed },
+                { assert workflow.stdout.any { it.contains("[yAMP preflight] --genbank together with --fasta, --snpeff_cache, --report_gff3: the GenBank route builds the FASTA, the snpEff database and the report's gene track from the one file") } }
+            )
+        }
+    }
+
+    test("neither --genbank nor --fasta: start-up error") {
+        when {
+            params {
+                outdir       = "$outputDir"
+                fasta        = null
+                snpeff_cache = null
+                report_gff3  = null
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.failed },
+                { assert workflow.stdout.any { it.contains('[yAMP preflight] no reference genome: pass --genbank <genome.gb|.gbk|.gbff[.gz]>') } }
+            )
+        }
+    }
+}
