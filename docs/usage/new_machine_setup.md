@@ -207,22 +207,29 @@ Measure the machine:
 echo "cpus: $(nproc)  ram: $(free -g | awk '/^Mem:/{print $2}')GB  disk: $(df -h --output=avail . | tail -1)"
 ```
 
-Edit the two numbers in the copy:
+Edit the three numbers in the copy:
 
 ```groovy
 process {
     resourceLimits = [ cpus: <your vCPUs>, memory: '<RAM minus ~2 GB>.GB', time: '72.h' ]
 }
+executor {
+    cpus = <twice your vCPUs>
+}
 ```
 
-`cpus` is the full vCPU count. It's a **per-task ceiling**, not a pool size, so it doesn't set
-concurrency (see the no-`executor` note below). Subtract ~2 GB from RAM for the OS, the Docker
+`resourceLimits.cpus` is the full vCPU count. It's a **per-task ceiling**, not a pool size, so it
+doesn't set concurrency. Subtract ~2 GB from RAM for the OS, the Docker
 daemon, and the Nextflow JVM itself, none of which are inside the clamp. `free -g` truncates, so
 read `free -m` if you're near a boundary: a "16 GB" VM usually reports ~15 GB.
 
-Deliberately **no `executor` block**: without one, Nextflow's local executor auto-detects the host
-and sizes concurrency itself. Setting a pool by hand that barely exceeds one task's request can
-deadlock the scheduler ([`nextflow_local_executor_deadlock.md`](nextflow_local_executor_deadlock.md)).
+`executor.cpus` is the scheduler's CPU **budget**, a bookkeeping number and not a hardware count,
+set to twice the ceiling on purpose: the scheduler starts a task only when its request fits what
+the budget says is free, the budget can lose a unit when a completion and a submission coincide
+(seen 2026-11-09), and a task that asks for all of it is then stranded with nothing running and no
+error. Leave the memory budget to Nextflow (it takes the machine's RAM); a hand-set memory pool that
+barely exceeds one task's request deadlocks the same way
+([`nextflow_local_executor_deadlock.md`](nextflow_local_executor_deadlock.md)).
 
 Keep the file **params-free**: `-c` outranks `-profile`, so any `params.*` in it would silently
 override the profile. Background:

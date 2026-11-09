@@ -168,28 +168,34 @@ nextflow -c conf/$(hostname).config run main.nf -profile ottilie_test,docker \
     --outdir ./output_ottilie_test --generate_reports
 ```
 
-Stripped of comments, the load-bearing part is three lines:
+Stripped of comments, the load-bearing part is six lines:
 
 ```groovy
 process {
     resourceLimits = [ cpus: 8, memory: '28.GB', time: '72.h' ]   // vCPUs, RAM − ~2 GB headroom
 }
+executor {
+    cpus = 16                                                      // twice the clamp: a budget, not hardware
+}
 ```
 
-- **Skip the executor pool.** With no `executor` block, Nextflow's default local executor
-  **auto-detects the host's CPUs/RAM** and sizes concurrency itself — which is what you want on an
-  unfamiliar machine. (This is exactly how the nf-test path runs; see below.)
+- **Set the CPU budget, leave the memory budget.** `executor.cpus` is what the local scheduler's
+  counters start from; twice the clamp means a task that asks for the cap never needs every CPU the
+  scheduler believes it has, which is the stall of 2026-11-09 (one lost unit, budget 3 of 4, a 4-CPU
+  task stranded). Memory stays at Nextflow's default, the host's RAM, which is what bounds real
+  concurrency. (The nf-test path runs the same way; see below.)
 - **A params-free `-c` does not clobber profiles.** Verified: with the config above,
   `-profile ottilie_test` keeps its `input`/`tools`/`fasta`. Only add params to a `-c` if you intend
   them to outrank the profile — `-c` wins over `-profile`.
-- Same resolved `resourceLimits` as the full `azureD4as` profile, without its pool or tuning.
+- Same resolved `resourceLimits` and CPU budget as the full `azureD4as` profile, without its memory
+  pool or per-task tuning.
 
 ### Option B — a named profile (for a machine you'll use repeatedly)
 
 1. Copy `conf/azured4as.config` → `conf/<machine>.config`.
 2. Change the two ceilings to the new machine (RAM − ~2 GB headroom, and vCPUs):
    ```groovy
-   executor { name='local'; cpus=<vcpus>; memory='<RAM-2>.GB' }
+   executor { name='local'; cpus=<2 × vcpus>; memory='<RAM-2>.GB' }   // cpus: a budget above the clamp
    process  { resourceLimits = [ cpus:<vcpus>, memory:'<RAM-2>.GB', time:'72.h' ] }
    ```
    Drop or re-measure the per-task tuning (`withLabel`/`withName`) — `resourceLimits` alone keeps it

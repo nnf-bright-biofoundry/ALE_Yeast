@@ -88,9 +88,13 @@ What follows from the measured part alone:
   (`executor { cpus = 8 }`, a number for the scheduler, not a hardware count) and trims memory requests
   to measured peaks, so the largest is about half of the memory budget. Tasks get the same `task.cpus`
   as before, so tool thread counts and outputs do not change.
-- **Still exposed:** the `azureD4as` profile (pool of 4 CPUs, processes that request 4) and a clamp-only
-  file copied from `conf/mymachine.config`. One stall in the contract-test runs to date; if a local run
-  stalls this way, the same two settings are the fix.
+- **The same settings in the local profile and the template** (same day): `conf/azured4as.config` has
+  `executor.cpus = 8` over its pool of 4 real CPUs, and its requests that needed most of the 14 GB
+  memory pool are trimmed to their peaks (`CNVKIT_BATCH` 14 → 4 GB, `MULTIQC` and
+  `GATK4_CREATESEQUENCEDICTIONARY` 12 → 4 GB, `GATK4_GENOMICSDBIMPORT|GATK4_GENOTYPEGVCFS` 12 → 6 GB;
+  Mutect2's 14 GB, a Tier-2 tool, stays).
+  `conf/mymachine.config` carries `executor { cpus = <twice the clamp> }` as a third number to edit,
+  and leaves the memory budget to Nextflow. Both were run on the test set after the change.
 
 ## How to diagnose
 

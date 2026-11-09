@@ -131,9 +131,9 @@ needs in-session are repeated here.
 - **A local run that sits with tasks queued, nothing running and no error** is the local scheduler's
   budget, not the code: a queued task asks for every CPU (or nearly all the memory) the scheduler
   believes it has, and one lost unit strands it. Seen 2026-11-09 on the contract test (3 of 4 CPUs
-  left in the budget, four 4-CPU `SNPEFF_SNPEFF` tasks queued). The nf-test resource file now gives
-  the scheduler a CPU budget of twice the per-task cap and trimmed memory requests; `azureD4as` and
-  clamp-only `-c` files keep the exposure. **Keep the log and trace before stopping the run**, a
+  left in the budget, four 4-CPU `SNPEFF_SNPEFF` tasks queued). The nf-test resource file, `azureD4as`
+  and the `conf/mymachine.config` template now give the scheduler a CPU budget of twice the per-task
+  cap (`executor { cpus = 8 }` on a 4-vCPU machine) and trimmed memory requests. **Keep the log and trace before stopping the run**, a
   rerun overwrites them. Diagnosis + evidence:
   [`nextflow_local_executor_deadlock.md`](docs/usage/nextflow_local_executor_deadlock.md) → *Second occurrence*.
 - **Apple Silicon is NOT supported** — tools stall/hang under ARM (MultiQC, Mutect2) plus

@@ -13,9 +13,12 @@
   twice the per-task cap (`executor { cpus = 8 }`) and trims memory requests to measured peaks (labels
   4 / 4 / 4 / 6 GB; `GATK4_MARKDUPLICATES` 8 GB, `BWAMEM1_MEM` 6 GB, `CNVKIT_BATCH`, `MULTIQC` and
   `GATK4_CREATESEQUENCEDICTIONARY` 4 GB),
-  so no task needs all of either. `task.cpus` is unchanged, and so is the contract-test snapshot. Test
-  runs only: no pipeline default, profile or cloud setting moves; the `azureD4as` profile and a
-  clamp-only `conf/mymachine.config` copy keep the same exposure. Evidence (replay script, event and
+  so no task needs all of either. `task.cpus` is unchanged, and so is the contract-test snapshot. The
+  same for local runs: `conf/azured4as.config` (`executor.cpus` 4 → 8; `CNVKIT_BATCH` 14 → 4 GB, `MULTIQC` and
+  `GATK4_CREATESEQUENCEDICTIONARY` 12 → 4 GB, `GATK4_GENOMICSDBIMPORT|GATK4_GENOTYPEGVCFS` 12 → 6 GB,
+  the requests that needed most of its 14 GB pool) and the `conf/mymachine.config` template (`executor { cpus = <twice the
+  clamp> }` as a third number to edit; README and `new_machine_setup.md` follow). No pipeline default
+  or cloud setting moves. Evidence (replay script, event and
   request tables, output): `docs/dev-practices/local_scheduler_stall_2026-11-09/`; the rule and how to
   diagnose it: `docs/usage/nextflow_local_executor_deadlock.md` → *Second occurrence*; the corrected
   claim that a clamp-only setup avoids the deadlock: `docs/dev-practices/compute_resources.md`.

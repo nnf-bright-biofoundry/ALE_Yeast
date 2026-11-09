@@ -148,10 +148,13 @@ Notes:
 
 - **It has to be a file.** `resourceLimits` cannot be set on the command line: `-process.` can't
   express a map, and there is no `--max_memory` param in this pipeline.
-- **No `executor` block on purpose.** Without one, Nextflow's local executor auto-detects the host's
-  CPUs and RAM and sizes concurrency itself. Hand-setting a pool that barely exceeds a single task's
-  request can deadlock the scheduler; see
+- **Give the scheduler a CPU budget of twice the clamp** (`executor { cpus = 8 }` for a 4-vCPU
+  machine; the template carries it). It is a number for the scheduler's bookkeeping, not a hardware
+  count: a task that asks for every CPU of the budget can be stranded, with nothing running and no
+  error, when the scheduler loses one unit; see
   [`docs/usage/nextflow_local_executor_deadlock.md`](docs/usage/nextflow_local_executor_deadlock.md).
+  Leave the memory budget to Nextflow (the machine's RAM); a hand-set pool that barely exceeds a
+  single task's request deadlocks the same way.
 - **Keep the file params-free.** `-c` outranks `-profile`, so any `params.*` in it will override the
   profile's settings.
 
