@@ -201,7 +201,10 @@ process {
 > only slightly larger than a single task's request fits exactly one task and can **deadlock** the
 > local scheduler ("No more task to compute"). Full symptoms and diagnosis:
 > [`docs/usage/nextflow_local_executor_deadlock.md`](../usage/nextflow_local_executor_deadlock.md).
-> Option A sidesteps this entirely by not setting a pool.
+> Option A does **not** sidestep this (an earlier version of this note said it did): with no pool the
+> budget is the host, and a task clamped to the host's CPU count still needs all of it. The contract
+> test stalled exactly so on 2026-11-09, with one CPU lost from the scheduler's budget; the remedy is a
+> CPU budget above the per-task cap (`executor { cpus = <2 × cap> }`), as the nf-test file now sets.
 
 | Machine | resourceLimits memory | cpus |
 |---------|-----------------------|------|
@@ -237,44 +240,54 @@ For the full cloud step-by-step (compute environment setup, Batch Forge, launch)
 [`docs/seqera_cloud/seqera_cloud_deployment_checklist.md`](../seqera_cloud/seqera_cloud_deployment_checklist.md)
 and [`docs/seqera_cloud/azure_batch_recommendations.md`](../seqera_cloud/azure_batch_recommendations.md).
 
-## nf-test resources — clamp only (no pool)
+## nf-test resources — clamp, CPU budget, trimmed memory
 
 Running the suite through **nf-test** is a fourth context, and it fits the machine differently from a
 `nextflow run`. The ALE tests launch with `-c tests/nf-test-ottilie.config`, which sets
-`profile "ottilie_test,docker"` — **deliberately without `azureD4as`**. So of the two layers above,
-only the **clamp** applies:
+`profile "ottilie_test,docker"` — **deliberately without `azureD4as`**. Their resources come from one
+file, `tests/ottilie_nftest_resources.config` (the nf-test config's `configFile`; `tests/qc_gate.sh` and
+`tests/nf_coverage.sh` pass the same file with `-c`). It carries three things:
 
-- **`resourceLimits`** comes from `tests/ottilie_nftest_resources.config` (the nf-test config's
-  `configFile`): `[cpus:4, memory:'14.GB', time:'24.h']`. This is the whole resource story for a test run.
-- **No `executor` pool** and **no per-task tuning** — those live in `conf/azured4as.config`, which the
-  test path doesn't load. Concurrency falls back to Nextflow's **default local executor** (it
-  auto-detects the host's CPUs/RAM). For the 2-sample ottilie run that's plenty; the clamp is what
-  guarantees every task stays schedulable.
+- **The clamp:** `resourceLimits = [cpus:4, memory:'14.GB', time:'24.h']`.
+- **A CPU budget above the clamp:** `executor { cpus = 8 }`. A number for the local scheduler, not a
+  hardware count: a task that asks for the cap (4) then never needs every CPU the scheduler believes it
+  has. Memory keeps Nextflow's default budget, the host's physical memory, which is what bounds real
+  concurrency.
+- **Memory requests trimmed to measured peaks** (`withLabel` 4 / 4 / 4 / 6 GB for single / low / medium /
+  high; by name `GATK4_MARKDUPLICATES` 8 GB, `BWAMEM1_MEM` 6 GB, `CNVKIT_BATCH`, `MULTIQC` and
+  `GATK4_CREATESEQUENCEDICTIONARY` 4 GB). The label and the first two name values are those of
+  `conf/azured4as.config`; the largest request (8 GB) is about half of the memory budget.
 
-Why a separate clamp-only file instead of reusing `azureD4as`? nf-test injects its `configFile` as a
+Until 2026-11-09 the file carried the clamp only, and a `process_medium` task asked for the whole
+machine (4 CPUs, 14 GB after the clamp). That evening a contract-test run stalled with four such tasks
+queued and nothing running, after the scheduler's CPU budget had dropped to 3 of 4: evidence, labels
+and the general rule in
+[`nextflow_local_executor_deadlock.md`](../usage/nextflow_local_executor_deadlock.md) → *Second
+occurrence*. Neither added setting changes what a task receives: `task.cpus`, the thread count handed to
+the tools, is untouched, and the contract-test snapshot did not move.
+
+Why a separate file instead of reusing `azureD4as`? nf-test injects its `configFile` as a
 **`-c`**, and `-c` outranks profiles. The default `nf-test.config` points `configFile` at
 `conf/test.config`, which carries upstream sarek's params (`input`, `genome`, `tools='strelka'`) and
-would clobber the `ottilie_test` profile. The fix was a **params-free** `configFile` — and once it is
-params-free it can only carry `resourceLimits`, not an `executor` pool. (`azureD4as` also brings
-full-run machinery the test doesn't want.) This is the precedent that **Option A** above — the
-`conf/mymachine.config` template — generalises.
+would clobber the `ottilie_test` profile. The fix was a **params-free** `configFile`; `azureD4as` also
+brings full-run machinery the test doesn't want (its pool, retries, time limits). This is the precedent
+that **Option A** above — the `conf/mymachine.config` template — generalises.
 
 **Two consequences worth knowing:**
 
 - ⚠️ **The test suite never exercises `conf/azured4as.config`.** A regression in that profile — the
   one `bin/test_ottilie.sh` and every dev-VM run depends on — would **not** be caught by `nf-test`.
   Coverage gap, not a bug; validate profile edits with an actual `bin/test_ottilie.sh` run.
-- Because `base.config`'s per-label requests apply un-trimmed, a `process_medium` task asks for
-  16 GB and is clamped to 14 GB under nf-test, versus 4 GB under `azureD4as` — so fewer tasks pack
-  in concurrently. Correct either way; just less dense.
+- The memory values are a second copy of the `azureD4as` ones. They are sized on the 2-sample test set;
+  a larger test set needs them re-measured from its trace (`peak_rss`), as that profile's were.
 - Minor drift: the test clamp allows `time: '24.h'` while `azureD4as` allows `'72.h'`. Unintentional
   rather than a decision — harmless for the 2-sample run, but align them if a test ever times out.
 
-**Porting a test run to another machine:** same idea as porting a VM profile, but edit the two numbers
-in `tests/ottilie_nftest_resources.config` (the [porting table](#porting-to-another-machine) applies
-directly). For a CI box that differs from the dev VM, add a second
-`tests/ottilie_nftest_resources_ci.config` and a matching `tests/nf-test-ottilie-ci.config` whose
-`configFile` points at it — keeping the dev-VM config untouched.
+**Porting a test run to another machine:** same idea as porting a VM profile, but edit the clamp and
+the CPU budget (twice the clamp's `cpus`) in `tests/ottilie_nftest_resources.config` (the
+[porting table](#porting-to-another-machine) applies directly). For a CI box that differs from the dev
+VM, add a second `tests/ottilie_nftest_resources_ci.config` and a matching
+`tests/nf-test-ottilie-ci.config` whose `configFile` points at it — keeping the dev-VM config untouched.
 
 ## Summary — the three orthogonal axes
 

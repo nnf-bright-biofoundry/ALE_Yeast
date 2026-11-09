@@ -1,0 +1,51 @@
+### stalled run (contract test, started 2026-11-09 19:03:56, killed 19:37)
+events: 136 submitted, 136 completed, 0 with a non-zero exit
+budget: 4 cpus, 15974 MB
+highest reservation: 4 cpus, 15360 MB, 4 tasks at once
+submissions that put the replay over the budget: 0
+at the end: 0 cpus, 0 MB, 0 tasks
+last moment each CPU level was reserved:
+  4 cpus: Nov-09 19:15:23.900  (event 201 of 272)
+  3 cpus: Nov-09 19:16:03.123  (event 269 of 272)
+  2 cpus: Nov-09 19:16:03.724  (event 270 of 272)
+  1 cpus: Nov-09 19:16:04.004  (event 271 of 272)
+  0 cpus: Nov-09 19:16:05.247  (event 272 of 272)
+after the last 4-cpu moment: highest reservation 3 cpus over 71 events; tasks submitted that request the whole CPU budget: 0
+events around the last 4-cpu moment:
+  19:15:23.547 - PREPARE_VCF               NODRUG-GM2_cnvkit             cpus 2  mem   2048  running 2
+  19:15:23.555 + PREPARE_VCF               NODRUG-GM2_tiddit             cpus 4  mem  14336  running 3
+  19:15:23.896 - VCFTOOLS_TSTV_COUNT       CBR110-15-R3a                 cpus 3  mem  13312  running 2
+  19:15:23.900 + BCFTOOLS_STATS            CBR110-15-R3a                 cpus 4  mem  14336  running 3
+  19:15:23.904 - VCFTOOLS_SUMMARY          CBR110-15-R3a                 cpus 3  mem  13312  running 2
+  19:15:24.942 - PREPARE_VCF               NODRUG-GM2_tiddit             cpus 1  mem   1024  running 1
+  19:15:24.945 - BCFTOOLS_STATS            CBR110-15-R3a                 cpus 0  mem      0  running 0
+  19:15:24.947 + FILTER_PASS_VCF           CBR110-15-R3a_manta           cpus 2  mem  12288  running 1
+  19:15:24.955 + VCFTOOLS_TSTV_QUAL        CBR110-15-R3a                 cpus 3  mem  13312  running 2
+
+budget: 4 cpus, 15974 MB; tasks with a proven waiting window: 71
+waiting although the request fitted for more than 0.5 s: 6
+  id  process             tag             waiting since     submitted     first fit   fit s  at cpu-1  at mem-12GB
+ 119  SNPEFF_SNPEFF       CBR110-15-R3a    19:15:23.900         never  19:15:24.945  no end       0.0          0.0
+ 120  VCFTOOLS_TSTV_QUAL  CBR110-15-R3a    19:15:23.900  19:15:24.955  19:15:23.904     1.1       0.0          0.0
+ 137  SNPEFF_SNPEFF       joint_variant_   19:15:55.225         never  19:15:59.261  no end       0.0          0.0
+ 145  SNPEFF_SNPEFF       NODRUG-GM2       19:15:59.265         never  19:16:05.247  no end       0.0          0.0
+ 146  VCFTOOLS_SUMMARY    NODRUG-GM2       19:15:59.265  19:16:00.473  19:15:59.265     1.2       0.1          0.1
+ 151  VCFTOOLS_TSTV_QUAL  CBR110-15-R3a    19:16:01.581  19:16:03.123  19:16:01.581     1.5       0.0          0.0
+
+### complete run on the same tree and config (started 2026-11-09 19:51:11, passed)
+events: 155 submitted, 155 completed, 0 with a non-zero exit
+budget: 4 cpus, 15974 MB
+highest reservation: 4 cpus, 15360 MB, 4 tasks at once
+submissions that put the replay over the budget: 0
+at the end: 0 cpus, 0 MB, 0 tasks
+last moment each CPU level was reserved:
+  4 cpus: Nov-09 20:03:51.235  (event 301 of 310)
+  3 cpus: Nov-09 20:03:47.675  (event 292 of 310)
+  2 cpus: Nov-09 20:04:30.534  (event 309 of 310)
+  1 cpus: Nov-09 20:03:46.082  (event 287 of 310)
+  0 cpus: Nov-09 20:04:32.477  (event 310 of 310)
+after the last 4-cpu moment: highest reservation 2 cpus over 9 events; tasks submitted that request the whole CPU budget: 0
+
+budget: 4 cpus, 15974 MB; tasks with a proven waiting window: 75
+waiting although the request fitted for more than 0.5 s: 0
+  id  process             tag             waiting since     submitted     first fit   fit s  at cpu-1  at mem-12GB

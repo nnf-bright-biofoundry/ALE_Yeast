@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### Fixed
+
+- **Local test runs: a task that needed the scheduler's whole budget could be stranded (2026-11-09).**
+  A contract-test run stopped after 136 completed tasks with four `SNPEFF_SNPEFF` tasks queued and
+  nothing running. Replaying the run's log shows the local scheduler never reserved more than 3 of its
+  4 CPUs after 19:15:23.900, while each queued task asked for 4 (and 14 GB of a 15.6 GB budget); the
+  cause inside Nextflow is inferred, not measured. `tests/ottilie_nftest_resources.config`, the resource
+  file of every nf-test, of `tests/qc_gate.sh` and of `tests/nf_coverage.sh`, now sets a CPU budget of
+  twice the per-task cap (`executor { cpus = 8 }`) and trims memory requests to measured peaks (labels
+  4 / 4 / 4 / 6 GB; `GATK4_MARKDUPLICATES` 8 GB, `BWAMEM1_MEM` 6 GB, `CNVKIT_BATCH`, `MULTIQC` and
+  `GATK4_CREATESEQUENCEDICTIONARY` 4 GB),
+  so no task needs all of either. `task.cpus` is unchanged, and so is the contract-test snapshot. Test
+  runs only: no pipeline default, profile or cloud setting moves; the `azureD4as` profile and a
+  clamp-only `conf/mymachine.config` copy keep the same exposure. Evidence (replay script, event and
+  request tables, output): `docs/dev-practices/local_scheduler_stall_2026-11-09/`; the rule and how to
+  diagnose it: `docs/usage/nextflow_local_executor_deadlock.md` → *Second occurrence*; the corrected
+  claim that a clamp-only setup avoids the deadlock: `docs/dev-practices/compute_resources.md`.
+
 ## v1.1.0 (2026-11-09): everything since v1.0.0, reference still given as pre-built files
 
 The state of `main` before the one-GenBank reference route is wired into a run. The reference is

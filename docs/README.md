@@ -39,7 +39,7 @@ how to run it, start at the [**root README**](../README.md).
 | [`seqera_cloud/seqera_cloud_deployment_checklist.md`](seqera_cloud/seqera_cloud_deployment_checklist.md) | Seqera Platform + Azure Batch deployment checklist (April 2026, predates the service-principal work; verify against `deploy/azure/seqera-sp/RUNBOOK.md`) |
 | [`seqera_cloud/azure_batch_recommendations.md`](seqera_cloud/azure_batch_recommendations.md) | ⚠️ Stale (April 2026): VM-sizing background only. Its config advice recommends **account keys**, which the current setup deliberately replaced with an Entra service principal |
 | [`usage/azure_vm_swap_setup.md`](usage/azure_vm_swap_setup.md) · [`usage/azure_blob_large_file_upload.md`](usage/azure_blob_large_file_upload.md) | VM swap; uploading >50 GB files to blob |
-| [`usage/nextflow_local_executor_deadlock.md`](usage/nextflow_local_executor_deadlock.md) | Local-executor deadlock and how to avoid it |
+| [`usage/nextflow_local_executor_deadlock.md`](usage/nextflow_local_executor_deadlock.md) | Local-executor deadlock and how to avoid it; second occurrence 2026-11-09 with the replay evidence in [`dev-practices/local_scheduler_stall_2026-11-09/`](dev-practices/local_scheduler_stall_2026-11-09/) |
 | [`dev-practices/troubleshooting.md`](dev-practices/troubleshooting.md) | Common run failures (starting with misleading samplesheet errors) |
 
 ---

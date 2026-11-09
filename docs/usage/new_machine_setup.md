@@ -335,7 +335,8 @@ The failure mode is misleading if you don't: the test reports a **missing output
 > **local-machine safeguard** for the common case where a system Nextflow (often 26.x) is already
 > on PATH and `nf-env` was never created. Redundant if you followed step 2; harmless either way.
 
-The nf-test path uses its own clamp (`tests/ottilie_nftest_resources.config`, set to 4 cpu / 14 GB)
+The nf-test path uses its own resource file (`tests/ottilie_nftest_resources.config`: clamp 4 cpu / 14 GB,
+a scheduler CPU budget of 8 and trimmed memory requests)
 and **ignores** your `conf/<hostname>.config`. That is deliberate, so that the contract test gives the same
 answer on every machine instead of varying with the host. Confirmed 2026-07-30 on a second VM
 (8 vCPU / 15 GB): the test passed with no `-c conf/<hostname>.config` and no edits. On a machine
@@ -383,7 +384,7 @@ Local runs need none of this.
 |---|---|
 | `Cannot read project manifest -- Config parsing failed` | Nextflow 26.x. Use 25.10.x (step 2). |
 | Permission denied on the Docker socket | Not in the `docker` group, or the group hasn't taken effect; start a new login session (step 1). |
-| Tasks queue but never start; `No more task to compute` | Executor pool too tight; see [`nextflow_local_executor_deadlock.md`](nextflow_local_executor_deadlock.md). |
+| Tasks queue but never start; `No more task to compute` | A queued task needs the scheduler's whole CPU or memory budget (pool too tight, or one unit lost); see [`nextflow_local_executor_deadlock.md`](nextflow_local_executor_deadlock.md). |
 | A task is OOM-killed | Clamp exceeds real RAM (step 4), or add swap (step 5). |
 | "sample-sheet only contains normal-samples" | Usually an upstream schema/config failure, not the samplesheet; see [`troubleshooting.md`](../dev-practices/troubleshooting.md). |
 | Pipeline aborts without `--skip_tools baserecalibrator` | Expected. BQSR needs known-sites VCFs, which custom microbial genomes lack. The `ottilie_test` profile sets this for you. |

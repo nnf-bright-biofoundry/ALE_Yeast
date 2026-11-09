@@ -128,6 +128,14 @@ needs in-session are repeated here.
 - **Resources**: `-profile azureD4as` is **on dev VM only** (4 vCPU / 16 GB). On any other machine
   copy [`conf/mymachine.config`](conf/mymachine.config) and pass it with `-c` — never reuse
   `azureD4as`. Model + precedence rules: [`compute_resources.md`](docs/dev-practices/compute_resources.md).
+- **A local run that sits with tasks queued, nothing running and no error** is the local scheduler's
+  budget, not the code: a queued task asks for every CPU (or nearly all the memory) the scheduler
+  believes it has, and one lost unit strands it. Seen 2026-11-09 on the contract test (3 of 4 CPUs
+  left in the budget, four 4-CPU `SNPEFF_SNPEFF` tasks queued). The nf-test resource file now gives
+  the scheduler a CPU budget of twice the per-task cap and trimmed memory requests; `azureD4as` and
+  clamp-only `-c` files keep the exposure. **Keep the log and trace before stopping the run**, a
+  rerun overwrites them. Diagnosis + evidence:
+  [`nextflow_local_executor_deadlock.md`](docs/usage/nextflow_local_executor_deadlock.md) → *Second occurrence*.
 - **Apple Silicon is NOT supported** — tools stall/hang under ARM (MultiQC, Mutect2) plus
   filesystem-optimization problems. The `arm,docker` profile is retained for reference only.
 
