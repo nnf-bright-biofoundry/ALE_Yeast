@@ -28,11 +28,16 @@ Everything here must be done **before** tagging — a tag is immutable, and re-p
 
 - [ ] **`CHANGELOG.md`** has the release section (Added / Changed / Fixed / Known limitations).
 - [ ] **`nextflow.config` manifest** — `version`, `description`, `name`, `homePage` correct.
-- [ ] **Container pin matches the version you're about to tag:**
+- [ ] **Container pin is the image the release ships:**
       ```bash
-      grep -n report_container nextflow.config      # -> docker.io/aledbucsd/ale-reports:X.Y.Z
+      grep -n report_container nextflow.config      # -> docker.io/aledbucsd/ale-reports:<image version>
+      git log --oneline <last release tag>..HEAD -- containers/generate_index/
       ```
-      This is the single source of truth; `modules/local/generate_index/main.nf` just reads it.
+      This is the single source of truth; `modules/local/generate_index/main.nf` just reads it. The
+      image version follows the pipeline version only when `containers/generate_index/` changed since
+      the last release. With no change the pin stays (v1.1.0 kept `ale-reports:1.0.0`): the image
+      `X.Y.Z` does not exist until the tag is pushed, so a pin moved before tagging breaks the
+      contract test, and the tag push still publishes an unused `ale-reports:X.Y.Z`.
 - [ ] **Docs cross-references resolve:**
       ```bash
       python docs/dev-practices/check_docs.py --mode links     # must be 0; exits non-zero if not

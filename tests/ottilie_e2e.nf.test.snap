@@ -85,7 +85,7 @@
                     "vcftools": "0.1.16"
                 },
                 "Workflow": {
-                    "nnf-bright-biofoundry/ALE_Yeast": "v1.0.0"
+                    "nnf-bright-biofoundry/ALE_Yeast": "v1.1.0"
                 }
             },
             [
@@ -1271,6 +1271,6 @@
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-10-23T16:12:39.51977942"
+        "timestamp": "2026-11-09T20:04:35.81293425"
     }
 }

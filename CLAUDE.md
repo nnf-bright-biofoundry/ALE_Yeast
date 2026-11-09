@@ -55,6 +55,11 @@ clean move is to **rename the repo**, keeping the two in sync, rather than to di
 > produced before that date (all baselines listed below) carries `Aletechdev/ALE_Yeast` in `versions.yml`
 > and `multiqc_data/` — a known, expected difference.
 >
+> **`manifest.version` moved `1.0.0` → `1.1.0` on 2026-11-09** (tag `v1.1.0`: the last state where the
+> reference is given only as pre-built files, cut before the one-GenBank route is wired). The line reads
+> `nnf-bright-biofoundry/ALE_Yeast: v1.1.0` from then on; every baseline listed below carries `v1.0.0`.
+> The report container pin stays `ale-reports:1.0.0` (image and pipeline versions are independent).
+>
 > ⚠️ The **verified Azure Batch baseline** at `az://aletest/ottilie-azurebatch-out/` was produced under
 > `Aletechdev/AMP`, so any future comparison against it shows that `versions.yml` line as a known,
 > expected difference. Note also that runs launched from a Git clone append the short commit

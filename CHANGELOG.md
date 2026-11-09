@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## v1.1.0 (2026-11-09): everything since v1.0.0, reference still given as pre-built files
+
+The state of `main` before the one-GenBank reference route is wired into a run. The reference is
+given as pre-built files (`fasta`, `snpeff_cache`, `snpeff_db`, `report_gff3`); the GenBank builder
+tasks are in the tree and module-tested, and no run calls them. `manifest.version` moves from
+`1.0.0` to `1.1.0`, so the pipeline line of `versions.yml` and of the MultiQC software table reads
+`nnf-bright-biofoundry/ALE_Yeast: v1.1.0` (one line of the contract-test snapshot). The report
+container stays `ale-reports:1.0.0`: its Dockerfile has not changed since v1.0.0, and the image
+version is independent of the pipeline version (`docs/dev-practices/release_process.md`).
+
 ### Repository
 
 - **Repository transferred to `nnf-bright-biofoundry/ALE_Yeast` (2026-10-23)**, from
