@@ -136,6 +136,11 @@ needs in-session are repeated here.
   cap (`executor { cpus = 8 }` on a 4-vCPU machine) and trimmed memory requests. **Keep the log and trace before stopping the run**, a
   rerun overwrites them. Diagnosis + evidence:
   [`nextflow_local_executor_deadlock.md`](docs/usage/nextflow_local_executor_deadlock.md) → *Second occurrence*.
+- **A run longer than a few minutes is launched detached** (`setsid nohup script > log 2>&1 < /dev/null & disown`,
+  or inside tmux): a dropped SSH / VS Code / Claude Code session SIGTERMs its children, and Nextflow then reports
+  `Pipeline completed with errors` with zero failed tasks. A Claude Code background task is such a child (2026-11-10:
+  the 75-min pilot died at 00:25 with the session, 35 tasks done, resumed with its session id). Recipe + resume:
+  [`long_runs_detached.md`](docs/usage/long_runs_detached.md).
 - **Apple Silicon is NOT supported** — tools stall/hang under ARM (MultiQC, Mutect2) plus
   filesystem-optimization problems. The `arm,docker` profile is retained for reference only.
 

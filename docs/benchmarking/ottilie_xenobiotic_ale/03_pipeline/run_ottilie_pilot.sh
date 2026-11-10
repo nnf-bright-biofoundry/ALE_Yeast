@@ -12,6 +12,10 @@
 # session id explicitly (`-resume <id>`, from .nextflow/history in the repo root) — a bare
 # -resume picks up whatever ran last there, which is usually an unrelated test.
 #
+# Launch DETACHED (about 75 min on the dev VM; a dropped shell or Claude Code session SIGTERMs a child
+# run, seen 2026-11-10): setsid nohup bash run_ottilie_pilot.sh > pilot.log 2>&1 < /dev/null & disown
+# Recipe + how to resume a killed run with its session id: docs/usage/long_runs_detached.md
+#
 # Previous run: 2026-07-10, session feea0f276c82158b2065aad5a6bac696 -> output_ottilie/
 #               (kept: 01_data_retrieval/release/generate_test_data.sh --from-cram reads its CRAMs)
 
