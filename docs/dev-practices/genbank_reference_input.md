@@ -165,6 +165,8 @@ independent of the naming choice: a reference record per strain (the manifest), 
 distance), and the position shift for indels (VCF anchor base, so the deleted run starts at POS + 1). ALEdb
 holds no contig length or md5 today; adding them is database-side work, and LOCUS keeps the simple
 name-based match working until then.
+The manifest exists only on the GenBank route; a pre-built-route output is registered from its FASTA's `.dict`
+(`M5:` tags, same md5) or by recomputing the md5 from the FASTA (§5.2).
 
 ## 4. Gotcha 2: the genetic code (`/transl_table`) is not applied unless you say so
 
@@ -318,6 +320,14 @@ One CSV per reference, `reference/<db>/contig_manifest.csv`, one row per record 
 
 Plus a header comment with the GenBank file name and its sha256. This is the reference record a future ALEdb
 registration keys on (§3.3).
+
+**The pre-built route produces no manifest, by decision (user, 2026-11-10): an output of that route carries no
+accession and no sequence md5 anywhere.** `save_reference` is off by default, so neither the `.dict` nor the
+`.fai` the run builds is published. A registration of such an output keys on the sequence md5 computed from the
+FASTA the run was given (its path is in the parameter summary), or from the `.dict` next to that FASTA: GATK's
+`M5:` tag is the same md5 of the upper-cased sequence (checked on the test reference, all four contigs equal
+the manifest convention). `--save_reference` publishes `reference/dict/` and `reference/fai/` with the run when
+that is wanted. The gap closes as the profiles move to the GenBank route (O.5, O.6).
 
 ### 5.3 The two build gates
 
