@@ -254,6 +254,28 @@ Full project history lives in `git log` and `CHANGELOG.md`; resolved items are s
   `wes`, custom `intervals` / `no_intervals`, `aligner != bwa-mem`; schema-overlay `exists` on
   `dict`, `intervals`, `report_gff3`. Unverified and therefore not implemented: an error for
   `sample == experiment` or names unsafe as `@RG SM` (no measured failure).
+- **[med] Pre-built route: two FASTA contigs that share one simplified snpEff name pass the cache check.**
+  From the review of the `--genbank` wiring (2026-11-10), read from the code and to be confirmed by the fixture
+  below. snpEff looks a contig up by a simplified name (`chr1` and `1` are the same contig to it), and the
+  *snpEff cache vs FASTA contig names* row of `PREFLIGHT_REFERENCE` compares on that name. In
+  `bin/preflight_reference.sh` the FASTA side keeps one line per simplified name (`sort -u -k1,1`), so a FASTA
+  holding both `chr1` and `1` is counted as one contig and the row says OK, while snpEff would annotate one of
+  the two with the other's genes. Rare (a stitched in-house reference) and silent. The GenBank route is not
+  affected: its build task stops on the contig-name gate. Fix, about five lines: an ERROR row naming both
+  contigs, plus one fixture case in `tests/preflight_reference.nf.test`. Not tied to a GenBank-route package.
+- **[low] GenBank route: three follow-ups from the same review, each due with the package that touches its
+  file.** Whoever closes that package checks the item off here, or rewrites it if it was decided otherwise.
+  1. *With the contract test moving to the GenBank route:* `--genbank` without snpEff in `--tools` is reasoned,
+     not run (the build task should still build and publish the database, and its gates still apply). Add it as
+     a case in `tests/genbank_route.nf.test`.
+  2. *With the launch form:* `--genbank` is still breseq's reference as well (three reads of `params.genbank` in
+     `workflows/sarek/main.nf`). Coherent, and breseq is not released; the schema text for `genbank` must say
+     so instead of describing it as breseq's parameter only.
+  3. *With the user guide:* the standalone `generate_mutation_report.nf` takes the manifest from
+     `reference/*/contig_manifest.csv` in the outdir but still needs `--fasta`, `--fasta_fai` and
+     `--report_gff3` on the command line, also for a GenBank-route outdir, which holds the FASTA and the GFF3
+     under `reference/<db>/` (no `.fai`). Either read them from there like the manifest, or state the command
+     in the guide.
 
 - **[med] `generate_mutation_report.nf` CRAM suffixes are wrong for 2 of 3 preprocessing layouts.**
   The standalone launcher rebuilds channels by *discovering published files*, so it hard-codes the
