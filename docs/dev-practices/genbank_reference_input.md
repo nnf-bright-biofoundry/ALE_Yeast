@@ -17,7 +17,7 @@ or CNVKit image; the commands are in §9 so the measurements can be repeated. Th
 | 4 | **Mitochondrion and plasmids are known from the GenBank qualifiers** (`/organelle`, `/plasmid`), through the manifest's type column; the name lists `Mito`, `chrM`, `MT` go. Only the dashboard consumes this | §5.4 |
 | 5 | **The builder rewrites VERSION to LOCUS in the copy it hands snpEff.** snpEff names contigs from VERSION, then `/chromosome`, then LOCUS, never ACCESSION (measured) | §3.2 |
 | 6 | **Two build gates**: protein check `Errors: 0`, and the cache's contig names equal the FASTA headers | §5.3 |
-| 7 | **An identifier verdict row in the yAMP input-checks table**: OK with an accession, WARN without, ERROR on duplicate or unparseable names. Runs in the QC-only path by construction | §5.5 |
+| 7 | **An identifier verdict row in the yAMP input-checks table**: OK, with a note naming the records without a versioned accession (a lab-made file is a first-class input; revised 2026-11-09, it was a WARN), ERROR on duplicate or unparseable names. Runs in the QC-only path by construction | §5.5 |
 | 8 | **Order of work**: codon-table fix in today's caches first, then builder, wiring, output scripts, form, docs, test data `ottilie/v2` last | `PLAN_next_checklist.md` §O |
 | 9 | **The build runs inside the pipeline**, two tasks on stock biocontainers, published under `reference/`; `--genbank x --build_only_index` is the standalone mode. The snpEff build task is written in nf-core shape for a later `snpeff/build` contribution (nf-core has `snpeff/download` and `snpeff/snpeff` only, re-checked 2026-11-02) | §5, §8 |
 | 10 | **`snpeff_db` on the GenBank route = the file's basename**; `--snpeff_db` stays as an override | §6 |
@@ -111,7 +111,7 @@ different sequences. The database view reverses the weighing:
 - **LOCUS is the only name a lab-made GenBank reliably has.**
 
 The sequence version is not lost, only moved to where a database wants it: the manifest records VERSION,
-length and md5 per contig and the file checksum (§5.2). Rule: identifier = LOCUS; the preflight row says when
+length and md5 per contig and the file checksum (§5.2). Rule: identifier = LOCUS; the preflight row notes when
 no accession is present (§5.5).
 
 ### 3.2 Gotcha 1, measured: who names the contig, and the rewrite that fixes it
@@ -362,9 +362,15 @@ are gone; the table's legend and the Methods section say which rule applied to t
 One more row in the *yAMP input checks* MultiQC table (same id and header as `PREFLIGHT_REFERENCE`; keep the
 two identical), written by the extract task from the manifest, so it runs under `--qc_only` by construction:
 
-- **OK** when every record has a versioned accession (VERSION present and different from LOCUS).
-- **WARN** listing the records without one (VERSION empty or equal to LOCUS), with the note that a database
-  registration will have to match by sequence md5. A lab draft is a legitimate input, so this is not an error.
+- **OK** in every case that is not an ERROR. When every record has a versioned accession (VERSION present
+  and different from LOCUS) the row says so.
+- **OK with a note** listing the records without one (VERSION empty or equal to LOCUS): a database
+  registration matches those contigs by sequence md5 from the contig manifest. No console line. This was a
+  WARN until 2026-11-10 (user decision 2026-11-09): a file made in SnapGene or Benchling, or written by
+  Prokka, has LOCUS == VERSION or no VERSION as a matter of course, so it is a first-class input, and a warning
+  on every such run would be noise about a database detail the manifest already records. The release test
+  GenBank is such a file (`rename_genbank_chromosomes.sh` set both lines to `I`, `IV`, `VII`, `XV`) and stays
+  as it is: it is the lab-draft case, and the zero-console-lines rule of the test profile holds on this route.
 - **ERROR** when two records resolve to the same identifier (also after snpEff's simplification, decision 19),
   or an identifier contains a colon, pipe or
   whitespace. Those break the SV mate parser (`sv_cohort_matrix.py`), the IGV cross-links

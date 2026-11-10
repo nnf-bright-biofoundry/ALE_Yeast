@@ -31,9 +31,11 @@ name everywhere (the LOCUS name; docs/dev-practices/genbank_reference_input.md �
 
 Verdicts (console lines only for WARN and ERROR, nothing on a clean file; exit 65 on ERROR so the
 module's errorStrategy stops the run; the table is written first):
-  GenBank contig identifiers   OK    every record has a versioned accession (VERSION differs from LOCUS)
-                               WARN  records without one (lab drafts): a database registration will
-                                     have to match by sequence md5
+  GenBank contig identifiers   OK    always, unless an ERROR below. Records without a versioned
+                                     accession (VERSION missing or equal to LOCUS: the normal output
+                                     of SnapGene, Benchling or Prokka, a first-class input) are listed
+                                     in a note: a database registration matches them by sequence md5
+                                     from the contig manifest. No console line
                                ERROR two records resolve to the same LOCUS, or to the same name once
                                      snpEff has simplified it (chr1 and 1 would be merged in the cache);
                                      a LOCUS with a colon, pipe, whitespace or a GFF3/VCF reserved
@@ -374,10 +376,16 @@ def main():
         if no_seq:
             parts.append(f"record(s) without sequence (CONTIG-only?): {', '.join(no_seq)}")
         verdicts.add("ERROR", check, f"{src_name}: {'; '.join(parts)}. The LOCUS name is the contig identifier in every output; fix the file and rerun")
-    elif no_accession:
-        verdicts.add("WARN", check, f"{src_name}: {len(no_accession)} of {n} record(s) carry no versioned accession (VERSION missing or equal to LOCUS): {', '.join(no_accession[:8])}{'…' if len(no_accession) > 8 else ''}. Contig names are the LOCUS names; a database registration will have to match these contigs by sequence md5 (contig_manifest.csv){renamed_note}")
     else:
-        verdicts.add("OK", check, f"{src_name}: {n} record(s), every one with a versioned accession; contig names are the LOCUS names ({', '.join(r.name for r in records[:6])}{'…' if n > 6 else ''}){renamed_note}")
+        names = f"{', '.join(r.name for r in records[:6])}{'…' if n > 6 else ''}"
+        if no_accession:
+            # A lab-made file (SnapGene, Benchling, Prokka) is a first-class input: a note, not a warning.
+            accession_note = (f"no versioned accession on {len(no_accession)} of {n} (VERSION missing or equal to LOCUS: "
+                              f"{', '.join(no_accession[:8])}{'…' if len(no_accession) > 8 else ''}), as usual for a lab-made file; "
+                              "a database registration matches these contigs by sequence md5 (contig_manifest.csv)")
+        else:
+            accession_note = "every one with a versioned accession"
+        verdicts.add("OK", check, f"{src_name}: {n} record(s), contig names are the LOCUS names ({names}); {accession_note}{renamed_note}")
 
     if verdicts.errors:
         verdicts.write(os.path.join(out, "preflight_genbank_mqc.tsv"))

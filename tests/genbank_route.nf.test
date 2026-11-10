@@ -87,17 +87,18 @@ nextflow_pipeline {
                 { assert path("$cache/snpEff.config").readLines() == [ 'S288C_R64_test.genome : S288C_R64_test' ] },
                 { assert !path("$cache/genes.gbk").exists() },
                 { assert path("$ref/S288C_R64_test.snpeff_build.log").text.contains('Protein check:') },
-                // the four reference rows of the input-checks table (the test GenBank has no versioned accession: WARN)
-                { assert gb_rows[1].startsWith('GenBank contig identifiers\tWARN\tS288C_R64_test.gb: 4 of 4 record(s) carry no versioned accession (VERSION missing or equal to LOCUS): I, IV, VII, XV.') },
+                // the four reference rows of the input-checks table (the test GenBank has no versioned accession,
+                // like any lab-made file: OK with a note)
+                { assert gb_rows[1] == 'GenBank contig identifiers\tOK\tS288C_R64_test.gb: 4 record(s), contig names are the LOCUS names (I, IV, VII, XV); no versioned accession on 4 of 4 (VERSION missing or equal to LOCUS: I, IV, VII, XV), as usual for a lab-made file; a database registration matches these contigs by sequence md5 (contig_manifest.csv)' },
                 { assert gb_rows[2] == 'GenBank genetic code\tOK\tS288C_R64_test.gb: no contig uses a non-standard code; 4 contig(s) standard (4 by the INSDC default, no /transl_table)' },
                 { assert bd_rows[1].startsWith('snpEff build: protein check\tOK\t') && bd_rows[1].contains('(Errors: 0)') },
                 { assert bd_rows[2] == 'snpEff build: contig names\tOK\t4 contig name(s) in the cache, equal to the expected list' },
                 // the reference preflight on the derived files: GFF3 agrees, the cache row is SKIPPED on this route
                 { assert pf_rows[1] == 'FASTA vs GFF3 contig names\tOK\tall 4 contig name(s) of S288C_R64_test.gff3 are contigs of S288C_R64_test.fa (4 contigs)' },
                 { assert pf_rows[2].startsWith('snpEff cache vs FASTA contig names\tSKIPPED\t') },
-                // the rows are in the read-QC report, and the WARN reached the console
+                // the rows are in the read-QC report, and the console carries no preflight line at all
                 { assert report.contains('GenBank contig identifiers') && report.contains('snpEff build: protein check') },
-                { assert workflow.stdout.any { it.contains('[yAMP preflight] WARN  GenBank contig identifiers: S288C_R64_test.gb: 4 of 4 record(s) carry no versioned accession') } },
+                { assert !workflow.stdout.any { it.contains('[yAMP preflight]') } },
             )
         }
     }

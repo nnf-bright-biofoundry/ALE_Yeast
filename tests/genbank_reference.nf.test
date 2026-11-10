@@ -16,7 +16,9 @@ nextflow_process {
     // VERSION := LOCUS (snpEff names contigs from VERSION, then /chromosome, then LOCUS); the names
     // snpEff will store (it strips a leading chr/chromo/chromosome and leading zeros, measured
     // 2026-11-02); two verdict rows of the "yAMP input checks" table, console lines only for WARN and
-    // ERROR, exit 65 on ERROR so the config stops the run.
+    // ERROR, exit 65 on ERROR so the config stops the run. A record without a versioned accession
+    // (VERSION missing or equal to LOCUS) is a lab-made file, a first-class input: the identifiers row
+    // stays OK and says so in a note, with no console line.
     //
     // Fixtures (tests/fixtures/genbank/, README there): mito_ncbi.gbff is the real NC_001224 record
     // (VERSION NC_001224.1, /organelle, 19 CDS with /transl_table=3, 11 of them joined over introns),
@@ -55,7 +57,7 @@ nextflow_process {
                 { assert process.success },
                 { assert verdicts(process.stdout) == [] },
                 { assert table.size() == 3 },
-                { assert table[1] == 'GenBank contig identifiers\tOK\tmito_ncbi.gbff: 1 record(s), every one with a versioned accession; contig names are the LOCUS names (NC_001224)' },
+                { assert table[1] == 'GenBank contig identifiers\tOK\tmito_ncbi.gbff: 1 record(s), contig names are the LOCUS names (NC_001224); every one with a versioned accession' },
                 { assert table[2] == 'GenBank genetic code\tOK\tmito_ncbi.gbff: NC_001224=3 (Yeast_Mitochondrial); 0 contig(s) standard' },
                 // FASTA: the LOCUS name, 85,779 bases in 60-column lines
                 { assert fa[0] == '>NC_001224' },
@@ -112,7 +114,7 @@ nextflow_process {
         }
     }
 
-    test("lab-style draft (no VERSION, /chromosome=M, no /transl_table): two WARN rows, VERSION inserted, standard code assumed, run proceeds") {
+    test("lab-style draft (no VERSION, /chromosome=M, no /transl_table): identifiers OK with a note, genetic code WARN, VERSION inserted, standard code assumed, run proceeds") {
         when {
             params { outdir = "$outputDir" }
             process {
@@ -130,12 +132,12 @@ nextflow_process {
             assertAll(
                 { assert process.success },
                 { assert table.size() == 3 },
-                { assert table[1].startsWith('GenBank contig identifiers\tWARN\tmito_draft.gb: 1 of 1 record(s) carry no versioned accession (VERSION missing or equal to LOCUS): mito_draft.') },
+                // no VERSION is normal for a lab-made file: OK with a note, and no console line for it
+                { assert table[1] == 'GenBank contig identifiers\tOK\tmito_draft.gb: 1 record(s), contig names are the LOCUS names (mito_draft); no versioned accession on 1 of 1 (VERSION missing or equal to LOCUS: mito_draft), as usual for a lab-made file; a database registration matches these contigs by sequence md5 (contig_manifest.csv)' },
                 { assert table[2].startsWith('GenBank genetic code\tWARN\tmito_draft.gb: organelle contig(s) whose CDS state no /transl_table: mito_draft. The standard code is assumed, which organelles rarely use') },
                 { assert table[2].contains('Add /transl_table=N to the CDS features and rerun') },
-                { assert out.size() == 2 },
-                { assert out[0].startsWith('[yAMP preflight] WARN  GenBank contig identifiers:') },
-                { assert out[1].startsWith('[yAMP preflight] WARN  GenBank genetic code:') },
+                { assert out.size() == 1 },
+                { assert out[0].startsWith('[yAMP preflight] WARN  GenBank genetic code:') },
                 // VERSION inserted right after LOCUS (no ACCESSION in the file): snpEff takes it before /chromosome
                 { assert gbk[0].startsWith('LOCUS       mito_draft') },
                 { assert gbk[1] == 'VERSION     mito_draft' },
@@ -165,7 +167,8 @@ nextflow_process {
             def dir   = process.out.snpeff_input[0][1]
             assertAll(
                 { assert process.success },
-                { assert table[1].contains('2 of 2 record(s) carry no versioned accession') },
+                { assert verdicts(process.stdout) == [] },
+                { assert table[1].startsWith('GenBank contig identifiers\tOK\tsynthetic_two_records.gb: 2 record(s), contig names are the LOCUS names (plasmidA, chrB); no versioned accession on 2 of 2 (VERSION missing or equal to LOCUS: plasmidA, chrB), as usual for a lab-made file;') },
                 { assert table[1].endsWith('snpEff stores 1 name(s) simplified (chrB as B); VCFs, tables and reports keep the LOCUS name') },
                 { assert table[2] == 'GenBank genetic code\tOK\tsynthetic_two_records.gb: plasmidA=11 (Bacterial_and_Plant_Plastid); 1 contig(s) standard (1 by the INSDC default, no /transl_table)' },
                 { assert path(process.out.fasta[0]).readLines().findAll { it.startsWith('>') } == [ '>plasmidA', '>chrB' ] },
@@ -275,7 +278,7 @@ nextflow_process {
             assertAll(
                 { assert process.success },
                 { assert verdicts(process.stdout) == [] },
-                { assert table[1] == 'GenBank contig identifiers\tOK\tmito_chrM.gbff: 1 record(s), every one with a versioned accession; contig names are the LOCUS names (chrM). snpEff stores 1 name(s) simplified (chrM as M); VCFs, tables and reports keep the LOCUS name' },
+                { assert table[1] == 'GenBank contig identifiers\tOK\tmito_chrM.gbff: 1 record(s), contig names are the LOCUS names (chrM); every one with a versioned accession. snpEff stores 1 name(s) simplified (chrM as M); VCFs, tables and reports keep the LOCUS name' },
                 { assert table[2] == 'GenBank genetic code\tOK\tmito_chrM.gbff: chrM=3 (Yeast_Mitochondrial); 0 contig(s) standard' },
                 { assert path(process.out.fasta[0]).readLines()[0] == '>chrM' },
                 { assert manifest(process.out.manifest[0])[1] == 'chrM,NC_001224.1,85779,71c39cf065b8d574f636b654c274cf1b,mitochondrion,,3,1' },

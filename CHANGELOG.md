@@ -51,6 +51,14 @@
   Tests: `tests/build_sv_matrix.nf.test`, `tests/build_contig_cn.nf.test` (fixtures `tests/fixtures/contig_order/`,
   an order that is neither alphabetical nor roman); the e2e snapshot is unchanged (the test set's order equals the
   old list and has no Mito). Template contract: `docs/igvreports/templates/README.md`.
+- **A lab-made GenBank is a first-class input: no warning for a missing versioned accession (2026-11-10).**
+  The *GenBank contig identifiers* row of the input-checks table read WARN, with a console line, for every
+  record whose VERSION is missing or equal to its LOCUS. That is what SnapGene, Benchling and Prokka write, so
+  the row is now OK and names those records in a note (a database registration matches them by sequence md5
+  from `reference/<db>/contig_manifest.csv`); nothing is printed on the console. The ERROR cases are
+  unchanged (duplicate or colliding LOCUS names, reserved characters, a record without sequence). The release
+  test GenBank is such a file, so a `--genbank` run of the test set now prints no `[yAMP preflight]` line.
+  Tests: `tests/genbank_reference.nf.test` (the draft and the synthetic two-record file), `tests/genbank_route.nf.test`.
 
 ### Fixed
 
