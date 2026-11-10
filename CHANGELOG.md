@@ -33,6 +33,22 @@
   content line of the contract-test snapshot (`reports/preflight/preflight_reference_mqc.tsv`) moved; the
   task's hash moved with its inputs, so it reruns once under `-resume` (seconds).
 
+### Changed
+
+- **The cohort tables follow the reference's contig order; the dashboard's multi-copy rule reads the contig
+  manifest (2026-11-09).** `sv_cohort_matrix_union{,_pass}.csv` and `contig_copy_number.csv` are written in the
+  `.fai` order (the FASTA's, the GenBank's record order on the `--genbank` route; both scripts take `--fai`),
+  where they sorted by a hard-coded roman-numeral list that put any other contig name in one bucket. The index's
+  *Whole chromosomes* table grades a contig against the cohort median of its fold change, instead of against 1,
+  when the reference's contig manifest types it as an organelle (mitochondrion) or a plasmid, which a `--genbank`
+  reference states in its qualifiers; the `Mito` / `chrM` / `MT` name list is gone. A reference given as FASTA
+  has no manifest, so there every contig, the mitochondrion included, is now graded against 1 (decision 2026-11-09;
+  on the 4-sample pilot the Mito column therefore reports an amplification in the parent and a loss in one
+  evolved clone, values the table always showed). The legend and the Methods section say which rule applied.
+  Tests: `tests/build_sv_matrix.nf.test`, `tests/build_contig_cn.nf.test` (fixtures `tests/fixtures/contig_order/`,
+  an order that is neither alphabetical nor roman); the e2e snapshot is unchanged (the test set's order equals the
+  old list and has no Mito). Template contract: `docs/igvreports/templates/README.md`.
+
 ### Fixed
 
 - **Interval chunk names cut at the first dot (2026-11-09).** `conf/modules/mpileup.config`,

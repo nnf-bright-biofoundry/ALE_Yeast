@@ -161,6 +161,7 @@ workflow SAREK {
         vep_species
         preflight_mqc      // the DAG-build input checks as a MultiQC table (PIPELINE_INITIALISATION)
         report_gff3        // value: the mutation report's gene-track GFF3, or [] — --report_gff3, or GENBANK_REFERENCE's on the --genbank route
+        contig_manifest    // value: GENBANK_REFERENCE's contig_manifest.csv on the --genbank route (the dashboard's multi-copy contigs), or []
         reference_mqc      // channel: input-checks rows of the --genbank route's two reference tasks (empty on the pre-built route)
         reference_versions // channel: their versions.yml
         snpeff_db          // string: the snpEff database name (--snpeff_db, or the GenBank's basename); null when snpEff is not run
@@ -1063,7 +1064,11 @@ workflow SAREK {
                 // Nextflow idiom for an absent optional path: it declares no file at all, so
                 // there is nothing for a remote work dir to stage. The value channel comes from
                 // main.nf: --report_gff3, or the GFF3 GENBANK_REFERENCE derived on the --genbank route.
-                report_gff3
+                report_gff3,
+                // The contig manifest of the --genbank route ([] on the pre-built route): its type column
+                // tells the index which contigs are multi-copy (mitochondrion, plasmid) and are therefore
+                // graded against the cohort median instead of 1. No manifest = no such contig.
+                contig_manifest
             )
         }
 

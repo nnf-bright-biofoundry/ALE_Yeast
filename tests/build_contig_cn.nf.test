@@ -1,0 +1,46 @@
+nextflow_process {
+
+    name "BUILD_CONTIG_CN unit"
+    script "../modules/local/build_contig_cn/main.nf"
+    process "BUILD_CONTIG_CN"
+    tag "ottilie"
+    tag "module"
+
+    // Run with: nf-test test -c tests/nf-test-ottilie.config tests/build_contig_cn.nf.test
+    //
+    // bin/contig_copy_number.py on two hand-made TIDDIT per-contig coverage tables
+    // (tests/fixtures/contig_order/, see the fixtures README). The rows must follow the .fai order
+    // (chrII, chrI, pA: neither alphabetical nor the roman-numeral list the script sorted by until
+    // 2026-11-09, docs/dev-practices/genbank_reference_input.md §5.6); a contig only one sample's
+    // table has and the .fai lacks (chrZ) goes last, with empty cells for the other sample. Values:
+    // fold change = TIDDIT Ploidy / the -n it ran with (S1 n=1, S2 n=2), log2 of it, 4 / 3 decimals.
+
+    def FX = "\$projectDir/tests/fixtures/contig_order"
+
+    test("rows in .fai order, ratio = Ploidy / n, a contig the .fai lacks last") {
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = [ file("$FX/S1.tiddit.ploidies.tab"), file("$FX/S2.tiddit.ploidies.tab") ]
+                input[1] = [ 'S1=1', 'S2=2' ]
+                input[2] = file("$FX/ref.fa.fai")
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert file(process.out.csv[0]).name == 'contig_copy_number.csv' },
+                { assert path(process.out.csv[0]).readLines() == [
+                    'chromosome,S1_log2,S1_fold_change,S1_tiddit_ploidy,S1_median_cov,S1_n,S2_log2,S2_fold_change,S2_tiddit_ploidy,S2_median_cov,S2_n',
+                    'chrII,-0.0740,0.950,0.9500,47.5,1,0.0000,1.000,2.0000,80.0,2',
+                    'chrI,0.1375,1.100,1.1000,55.0,1,0.0000,1.000,2.0000,80.0,2',
+                    'pA,3.5850,12.000,12.0000,600.0,1,0.5850,1.500,3.0000,120.0,2',
+                    'chrZ,,,,,1,0.0000,1.000,2.0000,80.0,2',
+                ] },
+                { assert path(process.out.versions[0]).readLines().any { it.contains('contig_copy_number: "1.1"') } }
+            )
+        }
+    }
+}

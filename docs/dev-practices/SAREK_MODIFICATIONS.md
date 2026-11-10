@@ -177,7 +177,7 @@ read preprocessing (2026-09-02): `trim_adapter` (upstream `trim_fastq` kept as d
 
 | Subworkflow | Purpose |
 |-------------|---------|
-| `mutation_report` | Multi-caller dashboard (CN/SV matrices + igv-reports + index). Channel-based. The gene-track gate reads `params.report_gff3 \|\| params.genbank` (2026-11-09): on the GenBank route the GFF3 arrives as a channel from `GENBANK_REFERENCE`. |
+| `mutation_report` | Multi-caller dashboard (CN/SV matrices + igv-reports + index). Channel-based. The gene-track gate reads `params.report_gff3 \|\| params.genbank` (2026-11-09): on the GenBank route the GFF3 arrives as a channel from `GENBANK_REFERENCE`, and so does the contig manifest (take `contig_manifest`, `[]` on the pre-built route) that `GENERATE_INDEX` reads for the multi-copy contigs. |
 | `split_joint_vcf` | Split joint germline VCF → per-sample VCFs (channel-based metadata). |
 | `vcf_filter_haplotypecaller_joint` | Hard-filter per-sample VCFs from joint calling. Opt-in (`--hard_filter_haplotypecaller_joint`); off in every ALE recipe since 2026-09-08. |
 | `fastq_variant_calling_breseq` | breseq path (AMP-v1 legacy integration, not Tier 1). |
@@ -210,13 +210,13 @@ own `modules/local/` (`add_info_to_vcf`, `create_intervals_bed`, `samtools`) is 
 |--------|------|
 | `build_cn_matrix` | Per-sample CN matrices from CNVKit output (`bin/build_cn_matrix.py`). Mutation report. |
 | `build_cn_cohort` | Collapsed cohort CN matrix from the bin-level CN (`bin/cn_cohort_matrix.py`). Mutation report. |
-| `build_contig_cn` | Contig-level copy number from TIDDIT's per-contig coverage (`bin/contig_copy_number.py`) — the one place Mito is quantified. |
-| `build_sv_matrix` | SV cohort matrix from the SVDB cross-caller cohort VCF (`bin/sv_cohort_matrix.py`). |
+| `build_contig_cn` | Contig-level copy number from TIDDIT's per-contig coverage (`bin/contig_copy_number.py`) — the one place Mito is quantified. Rows in the reference's `.fai` order (2026-11-09). `tests/build_contig_cn.nf.test`. |
+| `build_sv_matrix` | SV cohort matrix from the SVDB cross-caller cohort VCF (`bin/sv_cohort_matrix.py`). Rows in the reference's `.fai` order (2026-11-09). `tests/build_sv_matrix.nf.test`. |
 | `check_sv_sample_order` | Guard for `SVDB_MERGE --same_order`: svdb never checks sample-column names and would assign genotypes by position, silently. |
 | `cnr_to_bedgraph` | CNVKit `.cnr` → BedGraph coverage tracks for igv-reports. |
 | `collapse_sv_pairs` | SV breakend pairs → one record per junction, on every caller's VCF before any SVDB merge (`bin/collapse_sv_pairs.py`). |
 | `filter_pass_vcf` | PASS-only VCF plus a stats TSV for the report. |
-| `generate_index` | The dashboard `index.html` (Jinja2; pandas + jinja2 image — `docs/igvreports/`). |
+| `generate_index` | The dashboard `index.html` (Jinja2; pandas + jinja2 image — `docs/igvreports/`). Takes the `--genbank` route's contig manifest (`[]` otherwise): its `type` column names the contigs graded against the cohort median (2026-11-09). |
 | `igvreports_cohort` | Cohort igv-reports HTML (custom Tabulator template; the gene track is its only track). |
 | `igvreports_sample` | Per-sample igv-reports HTML with CRAM pileup and gene track. |
 | `igvreports_sv_cnv` | Per-sample SV/CNV igv-reports HTML (CNVKit BedGraph tracks, Manta, TIDDIT). |

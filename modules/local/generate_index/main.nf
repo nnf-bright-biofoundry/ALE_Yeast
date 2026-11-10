@@ -27,6 +27,8 @@ process GENERATE_INDEX {
     path cnv_sv_data, stageAs: "data/*"   // CN/SV CSVs + pass_stats staged into data/ subdir
     path multiqc_report                   // real multiqc_report.html file (or NO_FILE sentinel)
     path prepared_cohort_vcf
+    path contig_manifest                  // reference/<db>/contig_manifest.csv on the --genbank route (its type column
+                                          // names the multi-copy contigs), [] on the pre-built route (no manifest)
     val  outdir_label                     // where the complete output lands, shown under the summary cards
     val  report_dir_label                 // only when report_outdir differs from <outdir>/mutation_reports, else ''
     val  run_info                         // map: which run produced the bundle (name, session, start, commit, Seqera run id)
@@ -47,6 +49,7 @@ process GENERATE_INDEX {
     def has_multiqc = multiqc_report.name != 'NO_FILE'
     def mqc_path_arg = has_multiqc ? "--multiqc-report-path '${multiqc_report.name}'" : ""
     def prepared_vcf_arg = prepared_cohort_vcf.name != 'NO_FILE' ? "--prepared-vcf ${prepared_cohort_vcf}" : ""
+    def manifest_arg = contig_manifest ? "--contig-manifest ${contig_manifest}" : ""
     // Discover pass_stats TSVs from the staged data/ directory.
     def data_files = cnv_sv_data instanceof List ? cnv_sv_data : [cnv_sv_data]
     def stats_files = data_files.findAll { it.name.endsWith('.pass_stats.tsv') && it.name != 'NO_FILE' }
@@ -93,7 +96,7 @@ process GENERATE_INDEX {
         --pipeline-version '${workflow.manifest.version}' \\
         --snv-csv data/snv_indel_sites.csv \\
         --run-info run_info.json --qc-thresholds qc_thresholds.json \\
-        ${cnv_sv_arg} ${mqc_path_arg} ${prepared_vcf_arg} ${pass_stats_arg}
+        ${cnv_sv_arg} ${mqc_path_arg} ${prepared_vcf_arg} ${pass_stats_arg} ${manifest_arg}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

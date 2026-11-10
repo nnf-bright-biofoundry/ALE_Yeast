@@ -545,6 +545,13 @@ Full project history lives in `git log` and `CHANGELOG.md`; resolved items are s
 
 ### igvreports dashboard follow-ups (migrated from the igvreports reporting plan, 2026-07)
 
+- **[review] Drop the multi-copy special case from the *Whole chromosomes* table altogether?** (user 2026-11-09,
+  with O.4). Today a contig the reference's contig manifest types as an organelle or a plasmid is graded against the
+  cohort median of its fold change (`generate_index.py`, `multi_copy_contigs`); on the pre-built route there is no
+  manifest and every contig is graded against 1, which on the 4-sample pilot reports the parent's Mito (fold change
+  10) as an amplification. Question for the review: is one rule for every contig (against 1, the raw value shown, the
+  reader compares samples) clearer than two? If yes the manifest plumbing stays (the page's contig order) and only the
+  median rule goes.
 - **[low] User-adjustable chromosome order in the index tables** (user request 2026-11-02, cosmetic). The
   tables and CSVs follow the reference's record order (`genbank_reference_input.md` §5.6); a per-page order
   override, for viewing only, would sit in the template context. Flag when next reviewing `index.html`.

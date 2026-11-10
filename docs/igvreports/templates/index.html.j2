@@ -354,7 +354,7 @@ html.present .strip{height:26px} html.present .strip.compact{height:18px}
     <span class="k"><span class="sw" style="background:var(--loss-bg)"></span>loss, fold change &lt; {{ '%.2f' | format(2 ** cn_thresholds.loss) }}</span>
     <span class="k"><span class="sw" style="background:var(--gain-bg)"></span>gain, &gt; {{ '%.2f' | format(2 ** cn_thresholds.gain) }}</span>
     <span class="k"><span class="sw" style="background:var(--amp-bg)"></span>amplification, ≥ {{ '%.1f' | format(2 ** cn_thresholds.amp) }}</span>
-    <span>Mito is multi-copy: coloured against the cohort median, not 1</span>
+    {% if multi_copy_contigs %}<span>{{ multi_copy_contigs | join(', ') }}: multi-copy (reference manifest), coloured against the cohort median, not 1</span>{% else %}<span>every contig, the mitochondrion included, is coloured against 1 (a FASTA reference has no contig manifest)</span>{% endif %}
   </p>
 
   {%- if cn_reg_rows %}
@@ -603,8 +603,10 @@ html.present .strip{height:26px} html.present .strip.compact{height:18px}
       <h4>Summary rows</h4>
       <p><strong>Aneuploid chromosomes</strong>: contigs where any sample's log2 ratio is &lt; {{ cn_thresholds.loss }} (loss)
         or &gt; {{ cn_thresholds.gain }} (gain), the same thresholds as the cell colouring. Counted from the TIDDIT whole-contig
-        table when TIDDIT ran (it includes Mito), otherwise from the CNVKit chromosome table. The mitochondrial contig is
-        judged against the cohort median of its fold change rather than against 1, because mtDNA is multi-copy.
+        table when TIDDIT ran (it includes Mito), otherwise from the CNVKit chromosome table. A multi-copy contig is
+        judged against the cohort median of its fold change rather than against 1: one the reference's contig manifest
+        types as an organelle (mitochondrion) or a plasmid, which a GenBank reference states in its qualifiers. A
+        reference given as FASTA has no manifest, and then every contig, the mitochondrion included, is judged against 1.
         <strong>CN windows changed</strong>: collapsed windows where any sample crosses the same thresholds; the note gives
         the total number of windows.</p>
       <h4>Display values</h4>
@@ -661,10 +663,14 @@ html.present .strip{height:26px} html.present .strip.compact{height:18px}
         <li><strong>Whole-contig only.</strong> A partial-chromosome gain or an intra-contig deletion shows as a fractional
           value (1.28 may be "every cell carries 1.28 copies" or "28 % of cells carry two"); use the CNVKit windows for
           sub-chromosomal detail.</li>
-        <li><strong>Mitochondrial DNA is multi-copy</strong>, so <code>Mito</code> is normally well above 1 (about 10 in a
-          healthy haploid cell) and is the number to compare between parent and evolved clones; a drop towards 0 is loss of
-          the mitochondrial genome. For that reason its cell is coloured against the cohort median of the Mito fold change,
-          not against 1. This table is the only mtDNA quantification in the report (CNVKit excludes the contig by its GC mask).</li>
+        <li><strong>Mitochondrial DNA is multi-copy</strong>, so the mitochondrial contig is normally well above 1 (about 10
+          in a healthy haploid cell) and is the number to compare between parent and evolved clones; a drop towards 0 is
+          loss of the mitochondrial genome. {% if multi_copy_contigs %}For that reason the cell of a multi-copy contig
+          (<code>{{ multi_copy_contigs | join('</code>, <code>') }}</code>, from the reference's contig manifest) is
+          coloured against the cohort median of its fold change, not against 1.{% else %}This run's reference was given
+          as FASTA, which carries no contig manifest, so the mitochondrial contig is coloured against 1 like every other and
+          normally reads as an amplification; compare its value between the samples instead.{% endif %} This table is the
+          only mtDNA quantification in the report (CNVKit excludes the contig by its GC mask).</li>
         <li>Colours and the fold change / log2 toggle are shared with the CNVKit values (log2 &lt; {{ cn_thresholds.loss }}
           loss, &gt; {{ cn_thresholds.gain }} gain, &ge; {{ cn_thresholds.amp }} amplification).</li>
         <li>The genome-wide median is dominated by the nuclear genome, so a small contig cannot shift its own baseline.</li>
@@ -751,7 +757,7 @@ html.present .strip{height:26px} html.present .strip.compact{height:18px}
   const SAMPLES   = {{ samples | tojson }};
   const QC_T      = {{ qc_thresholds | tojson }};
   const CN_T      = {{ cn_thresholds | tojson }};
-  const MITO      = {{ (mito_contigs or ['Mito', 'chrM', 'MT']) | tojson }};
+  const MULTI     = {{ (multi_copy_contigs or []) | tojson }};   // graded against the cohort median; empty without a manifest
   const IGV_LOCUS = {{ (igv_locus_template or 'samples/{sample}_hc_report.html?locus={chrom}:{pos}') | tojson }};
   const CHROMS    = {{ (chromosomes or []) | tojson }};
   const QC        = {{ summary_data | tojson }};
@@ -981,31 +987,34 @@ html.present .strip{height:26px} html.present .strip.compact{height:18px}
 
     function matrix() {
       const src = source === "tiddit" ? CN_CONTIG : CN_CHR, tid = source === "tiddit";
-      const chrs = src.map(r => r.chromosome), mi = chrs.findIndex(c => MITO.includes(c));
-      const mitoMed = mi >= 0 ? median(SAMPLES.map(s => src[mi][s + "_fold_change"])) : null;
+      const chrs = src.map(r => r.chromosome);
+      // multi-copy contigs (manifest type mitochondrion / plasmid): the cohort median of the fold change is the baseline
+      const med = {};
+      chrs.forEach((c, ci) => { if (MULTI.includes(c)) med[ci] = median(SAMPLES.map(s => src[ci][s + "_fold_change"])); });
       const events = {};
       const rows = SAMPLES.map(s => {
         const row = { sample: s, _changed: false };
         src.forEach((r, ci) => {
           const fc = r[s + "_fold_change"], l2 = r[s + "_log2"];
           if (l2 == null) { row["c" + ci] = null; return; }
-          const eff = ci === mi && mitoMed ? Math.log2(fc / mitoMed) : l2;
+          const eff = med[ci] ? Math.log2(fc / med[ci]) : l2;
           const tip = s + " · " + r.chromosome + " · fold change " + fc + " · log2 " + l2 +
-            (tid && r[s + "_tiddit_ploidy"] != null ? " · TIDDIT ploidy " + r[s + "_tiddit_ploidy"] + " (n=" + r[s + "_n"] + "), median depth " + r[s + "_median_cov"] + "×" : "");
+            (tid && r[s + "_tiddit_ploidy"] != null ? " · TIDDIT ploidy " + r[s + "_tiddit_ploidy"] + " (n=" + r[s + "_n"] + "), median depth " + r[s + "_median_cov"] + "×" : "") +
+            (ci in med ? " · multi-copy, cohort median " + (med[ci] == null ? "n/a" : med[ci].toFixed(2)) : "");
           row["c" + ci] = { fc: fc, l2: l2, eff: eff, tip: tip };
           if (isChange(eff)) {
             row._changed = true;
-            const k = (ci === mi ? "Mito" : "chr " + r.chromosome) + (eff < 0 ? " loss" : " gain");
+            const k = (ci in med ? r.chromosome : "chr " + r.chromosome) + (eff < 0 ? " loss" : " gain");
             (events[k] = events[k] || []).push(s);
           }
         });
         return row;
       });
-      return { chrs, mi, rows, events, changed: rows.filter(r => r._changed), label: tid ? "TIDDIT" : "CNVKit" };
+      return { chrs, med, rows, events, changed: rows.filter(r => r._changed), label: tid ? "TIDDIT" : "CNVKit" };
     }
     const cnCell = cell => { const v = cell.getValue(); return v ? '<span class="cn ' + cnCls(v.eff) + '">' + val(v.fc, v.l2) + "</span>" : '<span class="cn cn-na">n/a</span>'; };
     const chrCols = m => [{ title: "Sample", field: "sample", frozen: true, minWidth: 150, headerFilter: "input", cssClass: "strong" }].concat(m.chrs.map((c, ci) => ({
-      title: ci === m.mi ? th(c, "vs median") : esc(c), titleFormatter: "html", titleDownload: c, field: "c" + ci, hozAlign: "center", minWidth: 52, cssClass: "cn-col",
+      title: ci in m.med ? th(c, "vs median") : esc(c), titleFormatter: "html", titleDownload: c, field: "c" + ci, hozAlign: "center", minWidth: 52, cssClass: "cn-col",
       sorter: (a, b) => (a ? a.eff : 0) - (b ? b.eff : 0), formatter: cnCell,
       tooltip: (e, cell) => { const v = cell.getValue(); return v ? v.tip : c + ": not evaluated by " + m.label; },
       accessorDownload: v => v ? (metric === "log2" ? v.l2 : v.fc) : "",

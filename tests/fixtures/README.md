@@ -243,3 +243,18 @@ Regenerate everything but `mito_ncbi.gbff` (deterministic, byte-identical on a s
 docker run --rm -u $(id -u):$(id -g) -v $PWD:/r -w /r quay.io/biocontainers/biopython:1.81 \
     python -I tests/fixtures/genbank/make_fixtures.py tests/fixtures/genbank
 ```
+
+## `contig_order/` — the cohort-table scripts' `.fai` order (`tests/build_sv_matrix.nf.test`, `tests/build_contig_cn.nf.test`)
+
+Hand-made, a few hundred bytes, written 2026-11-09 when `bin/sv_cohort_matrix.py` and `bin/contig_copy_number.py`
+switched from a hard-coded roman-numeral sort list to the reference's `.fai` order
+(`docs/dev-practices/genbank_reference_input.md` §5.6). The order is chosen so that neither an alphabetical sort
+nor the old list could reproduce it:
+
+| File | Content |
+|---|---|
+| `ref.fa.fai` | three contigs in the order **chrII, chrI, pA** (lengths 500 000 / 300 000 / 5 000; offsets are placeholders, only columns 1-2 are read) |
+| `sv_cohort_merged.vcf` | four records in the shape of the SVDB cross-caller cohort VCF (`docs/variant-calling/sv_merge.md`): a Manta-only DEL on chrI (S1 0/1 PASS), a TIDDIT-only DUP:TANDEM on chrII (S1 key present, GT 1/1), a Manta+TIDDIT BND chrII:100 → pA:50 (S2 0/1 with FT `MinGQ`: Manta support in the union view only, TIDDIT in both), a Manta INS on pA in both samples. Sample columns `Exp_S1`, `Exp_S2` (the `<patient>_<sample>` form the script matches by suffix) |
+| `S1.tiddit.ploidies.tab`, `S2.tiddit.ploidies.tab` | TIDDIT's per-contig table (`Chromosome Ploidy Ploidy_rounded Mean_coverage`); S2 carries an extra contig `chrZ` that the `.fai` lacks, which must come last with empty S1 cells |
+
+Expected rows (union view): chrII:100, chrII:2000, chrI:1000, pA:10; contig table: chrII, chrI, pA, chrZ.

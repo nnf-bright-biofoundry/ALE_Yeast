@@ -566,6 +566,10 @@ learn its own page address) and needs no network: Tabulator 6.3.0 is inlined fro
 index is the redesigned light-only page (template contract: [`docs/igvreports/templates/README.md`](docs/igvreports/templates/README.md));
 its Samples table grades QC pass / warn / fail with the hidden `report_qc_*` params (coverage, breadth at 20×, mapped %,
 duplicates %, plus a relative check at 0.33 of the cohort median coverage), and Mito is counted like any contig.
+In the *Whole chromosomes* table a contig the reference's **contig manifest** types as an organelle or a plasmid
+(`--genbank` route) is graded against the cohort median of its fold change; a FASTA reference has no manifest, so
+there every contig, Mito included, is graded against 1 (no name list; user decision 2026-11-09, dropping the special
+case altogether is a roadmap review item). The CN and SV cohort CSVs follow the `.fai` contig order (2026-11-09).
 See [`docs/igvreports/`](docs/igvreports/) and
 [`subworkflows/local/mutation_report/`](subworkflows/local/mutation_report/main.nf). The original design
 writeup (kept for future mutation-report work) is archived at

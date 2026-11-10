@@ -149,11 +149,13 @@ workflow NFCORE_SAREK {
         // both tasks take only value channels (one file, one name), so every output is a value channel
         fasta              = GENBANK_REFERENCE.out.fasta.map { f -> [ [ id:f.baseName ], f ] }
         report_gff3        = GENBANK_REFERENCE.out.gff3
+        contig_manifest    = GENBANK_REFERENCE.out.manifest   // its type column names the dashboard's multi-copy contigs
         reference_mqc      = GENBANK_REFERENCE.out.mqc.mix(SNPEFF_BUILD.out.mqc)
         reference_versions = GENBANK_REFERENCE.out.versions.mix(SNPEFF_BUILD.out.versions)
     } else {
         // [] (not null, not a placeholder file) is the idiom for an absent optional path: nothing to stage
         report_gff3        = params.report_gff3 ? Channel.value(file(params.report_gff3, checkIfExists: true)) : Channel.value([])
+        contig_manifest    = Channel.value([])   // no manifest: the dashboard grades every contig, Mito included, against 1
         reference_mqc      = Channel.empty()
         reference_versions = Channel.empty()
     }
@@ -336,6 +338,7 @@ workflow NFCORE_SAREK {
         vep_species,
         preflight_mqc,
         report_gff3,
+        contig_manifest,
         reference_mqc,
         reference_versions,
         snpeff_db

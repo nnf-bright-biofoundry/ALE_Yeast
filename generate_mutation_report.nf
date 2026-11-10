@@ -185,6 +185,9 @@ workflow {
     def mqc_file = file("${outdir}/multiqc/multiqc_report.html")
     multiqc_report = Channel.value(mqc_file.exists() ? mqc_file : file("NO_FILE"))
 
+    def manifests = file("${outdir}/reference/*/contig_manifest.csv")
+    def contig_manifest = manifests ? manifests[0] : []
+
     MUTATION_REPORT(
         report_vcfs,
         cram,
@@ -199,6 +202,9 @@ workflow {
         // Standalone regenerates from an existing outdir (no PREPARE_GENOME), so --fasta_fai
         // is still required here; wrapped in a value channel to match MUTATION_REPORT's input.
         Channel.value([ file(params.fasta), file(params.fasta_fai) ]),
-        file(params.report_gff3)
+        file(params.report_gff3),
+        // The contig manifest a --genbank run published under reference/<db>/; a pre-built-route outdir
+        // has none, and then every contig (Mito included) is graded against 1, as in the run itself.
+        Channel.value(contig_manifest)
     )
 }

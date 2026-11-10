@@ -23,9 +23,13 @@ Cells are a DETERMINISTIC PARSE of the merged VCF — no proximity matching. The
 Record coordinates are the priority caller's (Manta when it contributed); the other
 caller's live in INFO/<tag>_POS and are not re-derived here.
 
+Rows are in reference order: the contig order of the reference's .fai (= the FASTA's, = the
+GenBank's record order on the --genbank route), then pos. Nothing is sorted by name; a contig
+the .fai lacks (none in practice: the VCF's contigs are the reference's) goes last, by name.
+
 Usage (from BUILD_SV_MATRIX):
     sv_cohort_matrix.py --cohort-vcf sv_cohort_merged_union.vcf.gz \
-        --samples CBR110-15-R3a NODRUG-GM2 \
+        --samples CBR110-15-R3a NODRUG-GM2 --fai reference.fa.fai \
         --csv sv_cohort_matrix_union.csv [--pass-view]
 """
 
@@ -35,9 +39,6 @@ import gzip
 import re
 import sys
 from pathlib import Path
-
-CHR_ORDER = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII",
-             "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI", "Mito"]
 
 BND_MATE_RE = re.compile(r"[\[\]]([^\[\]:]+):(\d+)[\[\]]")
 TIDDIT_SAMPLE_KEY_RE = re.compile(r"^(.+)\.tiddit(?:\.pass)?_SAMPLE$")
@@ -123,11 +124,16 @@ def parse_records(vcf_path, samples, pass_view):
             yield row
 
 
-def chr_sort_key(chrom):
-    try:
-        return CHR_ORDER.index(chrom)
-    except ValueError:
-        return len(CHR_ORDER)
+def load_contig_order(fai_path):
+    """Contig names in .fai order (samtools faidx writes them in FASTA order)."""
+    with open(fai_path) as f:
+        return [line.split("\t")[0] for line in f if line.strip()]
+
+
+def contig_sort_key(order):
+    """Sort key: position in the .fai, then (last) the name for a contig the .fai lacks."""
+    index = {c: i for i, c in enumerate(order)}
+    return lambda chrom: (index.get(chrom, len(order)), chrom)
 
 
 def main():
@@ -137,6 +143,8 @@ def main():
                         help="SVDB cross-caller cohort VCF (.vcf or .vcf.gz)")
     parser.add_argument("--samples", required=True, nargs="+",
                         help="Sample ids, in the desired column order")
+    parser.add_argument("--fai", required=True,
+                        help="Reference .fai: its contig order is the row order")
     parser.add_argument("--csv", required=True, help="Output CSV path")
     parser.add_argument("--pass-view", action="store_true",
                         help="Apply the per-sample FT gate (union_pass matrix)")
@@ -145,8 +153,11 @@ def main():
     samples = args.samples
     print(f"Samples: {', '.join(samples)}")
 
+    order = load_contig_order(args.fai)
+    print(f"Reference: {args.fai} ({len(order)} contigs)")
+    chrom_key = contig_sort_key(order)
     rows = list(parse_records(args.cohort_vcf, samples, args.pass_view))
-    rows.sort(key=lambda r: (chr_sort_key(r["chrom"]), r["pos"], r["end"], r["svtype"]))
+    rows.sort(key=lambda r: (chrom_key(r["chrom"]), r["pos"], r["end"], r["svtype"]))
     print(f"Cohort events: {len(rows)}")
 
     out_path = Path(args.csv)

@@ -1,0 +1,21 @@
+##fileformat=VCFv4.2
+##source=hand-made SVDB cross-caller cohort VCF shape (tests/fixtures/README.md, contig_order/)
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">
+##INFO=<ID=SVLEN,Number=.,Type=Integer,Description="Difference in length between REF and ALT alleles">
+##INFO=<ID=END,Number=1,Type=Integer,Description="End position of the variant described in this record">
+##INFO=<ID=manta_POS,Number=.,Type=String,Description="Manta contributed (priority caller): FORMAT is Manta's">
+##INFO=<ID=tiddit_POS,Number=.,Type=String,Description="TIDDIT contributed">
+##INFO=<ID=S1.tiddit_SAMPLE,Number=.,Type=String,Description="S1's TIDDIT VCF held the call (union view key)">
+##INFO=<ID=S2.tiddit_SAMPLE,Number=.,Type=String,Description="S2's TIDDIT VCF held the call (union view key)">
+##INFO=<ID=S1.tiddit.pass_SAMPLE,Number=.,Type=String,Description="pass view key">
+##INFO=<ID=S2.tiddit.pass_SAMPLE,Number=.,Type=String,Description="pass view key">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=FT,Number=1,Type=String,Description="Sample filter">
+##contig=<ID=chrII,length=500000>
+##contig=<ID=chrI,length=300000>
+##contig=<ID=pA,length=5000>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	Exp_S1	Exp_S2
+chrI	1000	MantaDEL:1	N	<DEL>	200	PASS	SVTYPE=DEL;SVLEN=-1500;END=2500;manta_POS=MantaDEL:1|1000	GT:FT	0/1:PASS	0/0:PASS
+chrII	2000	SV_1_1	N	<DUP:TANDEM>	80	PASS	SVTYPE=DUP:TANDEM;SVLEN=300;END=2300;tiddit_POS=SV_1_1|2000;S1.tiddit_SAMPLE=SV_1_1|Exp_S1|GT:1/1;S1.tiddit.pass_SAMPLE=SV_1_1|Exp_S1|GT:1/1	GT	1/1	0/0
+chrII	100	MantaBND:1:0	N	N[pA:50[	50	PASS	SVTYPE=BND;manta_POS=MantaBND:1:0|100;tiddit_POS=SV_2_1|100;S2.tiddit_SAMPLE=SV_2_1|Exp_S2|GT:0/1;S2.tiddit.pass_SAMPLE=SV_2_1|Exp_S2|GT:0/1	GT:FT	0/0:PASS	0/1:MinGQ
+pA	10	MantaINS:1	N	<INS>	300	PASS	SVTYPE=INS;SVLEN=120;END=10;manta_POS=MantaINS:1|10	GT:FT	0/1:PASS	1/1:PASS

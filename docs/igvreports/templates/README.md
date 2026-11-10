@@ -34,8 +34,8 @@ ctx = dict(
   tabulator_js="<contents of tabulator.min.js>",
 
   samples=["CBR110-15-R3a", "NODRUG-GM2"],   # display order everywhere
-  chromosomes=["I", "II", …, "Mito"],         # reference order for sorting (optional)
-  mito_contigs=["Mito", "chrM", "MT"],        # coloured vs cohort median, not vs 1
+  chromosomes=["I", "II", …, "Mito"],         # contig order for sorting (optional): the reference's contig manifest when the run had one (--genbank route), else the order of first appearance in the cohort VCF, else the TIDDIT table's rows; all three are reference (.fai) order
+  multi_copy_contigs=["Mito"],                # coloured vs the cohort median of their fold change, not vs 1: the contigs whose manifest `type` is neither `chromosome` nor `other` (an /organelle value such as mitochondrion, or plasmid). [] without a manifest (pre-built route: a FASTA names no organelle), and then every contig, Mito included, is coloured vs 1; the legend and Methods say which applied. No name list, no template fallback (2026-11-09; was mito_contigs=["Mito","chrM","MT"])
   igv_locus_template="samples/{sample}_hc_report.html?locus={chrom}:{pos}",
 
   qc_thresholds=dict(cov_pass=30, cov_fail=15, breadth_pass=95, breadth_fail=90,
@@ -77,7 +77,7 @@ Set `snv_rows` / `sv_rows` to `None` (and leave all three CN lists empty) to hid
 - **SNV / InDel:** Locus is a single column (sorts by chromosome order, then position). VAF cells also show depth, in amber below `min_dp`. Clicking a row opens a per-sample panel (GT, AD, DP, VAF, IGV link at that locus). The view toggles show counts; since 2026-10-07 a cohort has three: *Protein-changing* (opening view), *All differing*, *All PASS sites* (every PASS row: the shared strain background and the carried sites with no sample to compare against, whose other cells read *no reads*). An *IGV, all samples* button opens the cohort igv-report. Three wordings as before: cohort with SnpEff, cohort without SnpEff (no gene columns, no Protein-changing toggle, opens on the differing sites with a *Differ between samples* / *All PASS sites* toggle), one sample (every PASS site it carries; *Protein-changing* / *All PASS sites*). When the rows were cut at `snv_max_rows` the lede says so and the toggles read "N of M". The *CSV, rows shown* export carries a hidden *Differs between samples* column on a cohort.
 - **SV:** the Type / Location / Length layout. New "Differ between samples" toggle.
 - **Copy number:** the three tabs are gone.
-  - *Whole chromosomes:* samples as rows. A source toggle switches between TIDDIT (incl. Mito) and CNVKit.
+  - *Whole chromosomes:* samples as rows. A source toggle switches between TIDDIT (incl. Mito) and CNVKit. A contig in `multi_copy_contigs` has its column headed *vs median* and its cells graded against the cohort median of its fold change; the event label then names the contig as is (no "chr" prefix).
   - *Changed windows:* one row per window that changed in any sample, plus a per-sample strip (values shown up to 8 samples, compact blocks with hover above that). Chromosome chips and a "hide changed in every sample" toggle.
   - The Fold change / log2 ratio toggle and "Only samples with a change" apply to both tables.
   - Downloads: TIDDIT CSV, CNVKit CSV, Windows CSV and *All bins CSV* (the uncollapsed matrix, `data/cn_cohort_full.csv`).
@@ -97,3 +97,4 @@ Set `snv_rows` / `sv_rows` to `None` (and leave all three CN lists empty) to hid
 - Render with the two-sample test run (the e2e contract test does; `index.html` is name-only in its snapshot, so open the page in a browser).
 - Render a run with ≥ 60 samples. Check that the window strip switches to compact blocks and the chromosome table gets a fixed height and scrolls.
 - Force a QC failure (e.g. `cov_fail=50`). The Summary should show the failure line, and that sample's QC cell should be red.
+- Render a full-genome bundle twice, with `--contig-manifest` (a manifest typing Mito `mitochondrion`) and without. With it the Mito column reads *vs median* and the legend names Mito; without it the legend says every contig is coloured against 1 and a Mito value of 10 shows as an amplification (done 2026-11-09 on the 4-sample pilot bundle, `index.html` of `output_ottilie_pilot_2026-09-09`).

@@ -99,6 +99,10 @@ declare -A TESTMAP=(
   ['modules/local/snpeff_build/']=snpeff_build
   ['bin/snpeff_build_gates.sh']=snpeff_build
   ['conf/modules/genbank_reference.config']='genbank_reference snpeff_build'
+  ['modules/local/build_sv_matrix/']=build_sv_matrix
+  ['bin/sv_cohort_matrix.py']=build_sv_matrix
+  ['modules/local/build_contig_cn/']=build_contig_cn
+  ['bin/contig_copy_number.py']=build_contig_cn
 )
 for path in "${!TESTMAP[@]}"; do
   if grep -q "^${path}" <<<"$staged"; then

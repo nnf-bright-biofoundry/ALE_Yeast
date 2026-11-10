@@ -50,6 +50,9 @@ workflow MUTATION_REPORT {
     multiqc_report      // channel: MultiQC report file(s) — ordering edge + linked from index.html
     fasta               // channel: value [ path(fasta), path(fai) ]
     gff3                // path:     gene annotation GFF3
+    contig_manifest     // channel: value path(contig_manifest.csv) on the --genbank route (GENBANK_REFERENCE),
+                        //          [] on the pre-built route: there is no manifest, so the index grades every
+                        //          contig, Mito included, against 1 (no name-list fallback; user decision 2026-11-09)
 
     main:
     versions = Channel.empty()
@@ -226,7 +229,8 @@ workflow MUTATION_REPORT {
         ch_contig_cn_in = tiddit_ploidy.map { meta, tab -> [ tab, "${meta.id}=${meta.ploidy ?: 2}" ] }
         BUILD_CONTIG_CN(
             ch_contig_cn_in.map { tab, p -> tab }.collect(),
-            ch_contig_cn_in.map { tab, p -> p   }.collect()
+            ch_contig_cn_in.map { tab, p -> p   }.collect(),
+            ch_fai
         )
         versions = versions.mix(BUILD_CONTIG_CN.out.versions)
         ch_contig_cn = BUILD_CONTIG_CN.out.csv
@@ -334,9 +338,9 @@ workflow MUTATION_REPORT {
 
         // Matrix: one deterministic parse of the merged VCF per view (GT/FT for Manta cells,
         // propagated <sample>.tiddit*_SAMPLE keys for TIDDIT cells) — no proximity matching.
-        // Sample order = sorted ids, matching every other cohort table.
+        // Sample order = sorted ids, matching every other cohort table; row order = the .fai's.
         ch_matrix_samples = cram.map { meta, c, crai -> meta.id }.toSortedList()
-        BUILD_SV_MATRIX(SVDB_MERGE_CALLERS.out.vcf, ch_matrix_samples)
+        BUILD_SV_MATRIX(SVDB_MERGE_CALLERS.out.vcf, ch_matrix_samples, ch_fai)
         versions = versions.mix(BUILD_SV_MATRIX.out.versions)
 
         // Dashboard data: the two matrix CSVs + the two cohort VCFs (named
@@ -529,6 +533,7 @@ workflow MUTATION_REPORT {
             ch_cnv_sv_data,
             ch_multiqc_report,
             ch_prepared_cohort_vcf.collect(),
+            contig_manifest,
             outdir_label,
             report_dir_label,
             run_info

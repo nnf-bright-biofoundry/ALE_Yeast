@@ -136,8 +136,8 @@ CSV schema (unchanged from the SURVIVOR era):
 ```
 chrom, pos, chrom2, end, svtype, svlen, <sample_1>, <sample_2>, ...
 ```
-Cells: `Manta` / `TIDDIT` / `Manta+TIDDIT` / `-`. Rows sorted by yeast chromosome order, then
-`pos`. `DUP:TANDEM` and `DUP:INV` are normalised to `DUP` (exact subtype in `tiddit_INFO`); BND rows put the mate position in `chrom2`/`end` and
+Cells: `Manta` / `TIDDIT` / `Manta+TIDDIT` / `-`. Rows in the reference's contig order (the `.fai`,
+`--fai`; since 2026-11-09, before that a hard-coded roman-numeral list), then `pos`. `DUP:TANDEM` and `DUP:INV` are normalised to `DUP` (exact subtype in `tiddit_INFO`); BND rows put the mate position in `chrom2`/`end` and
 `svlen 0`. Coordinates are the priority caller's (Manta wherever it contributed). Line endings LF.
 
 ## Gotchas summary

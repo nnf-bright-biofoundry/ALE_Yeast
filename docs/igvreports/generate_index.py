@@ -72,7 +72,12 @@ QC_THRESHOLD_DEFAULTS = {
     "min_dp": 8,                             # amber depth in the SNV / InDel events table
 }
 CN_THRESHOLDS = {"loss": -0.4, "gain": 0.3, "amp": 2.3, "deep_loss": -1.0}  # log2; the page's colours and the counts here
-MITO_CONTIGS = ["Mito", "chrM", "MT"]  # coloured against the cohort median, not against 1 (multi-copy)
+# Contig manifest types (reference/<db>/contig_manifest.csv, written by the --genbank route's extract task from the
+# file's qualifiers) that are NOT multi-copy. Every other type (an /organelle value such as mitochondrion, plasmid)
+# is graded in the Whole chromosomes table against the cohort median of its fold change, not against 1. Without a
+# manifest (the pre-built route: a FASTA names no organelle) the list is empty and every contig, the mitochondrion
+# included, is graded against 1; there is no guessing from contig names (decision 2026-11-09).
+SINGLE_COPY_TYPES = {"chromosome", "other"}
 IGV_LOCUS_TEMPLATE = "samples/{sample}_hc_report.html?locus={chrom}:{pos}"  # custom_template_sample.html reads ?locus=
 TOOL_LINKS = {  # the header's caller line
     "HaplotypeCaller": ("GATK HaplotypeCaller", "https://gatk.broadinstitute.org/hc/en-us/articles/360037225632-HaplotypeCaller"),
@@ -492,6 +497,21 @@ def load_contig_cn(path: Path) -> dict | None:
     return {"rows": out, "samples": samples, "row_count": len(out), "change_count": change_count}
 
 
+def load_contig_manifest(path: Path | None) -> list[dict] | None:
+    """Rows of the reference's contig manifest (contig, version, length, md5, type, chromosome, transl_table, order),
+    in file order = the GenBank's record order; the '#' header lines are skipped. None without a manifest."""
+    if path is None or not path.exists():
+        return None
+    with open(path) as f:
+        rows = list(csv.DictReader(line for line in f if not line.startswith("#")))
+    return rows
+
+
+def multi_copy_contigs(manifest: list[dict] | None) -> list[str]:
+    """The contigs the Whole chromosomes table grades against the cohort median (SINGLE_COPY_TYPES excluded)."""
+    return [r["contig"] for r in (manifest or []) if (r.get("type") or "other") not in SINGLE_COPY_TYPES]
+
+
 def load_cn_regions(path: Path) -> dict | None:
     """Load collapsed CN region matrix CSV. Display value is log2 ratio."""
     if not path.exists():
@@ -660,6 +680,7 @@ def build_context(
     joint_vcf: Path | None = None,
     prepared_vcf: Path | None = None,
     pass_stats_files: list[Path] | None = None,
+    contig_manifest: Path | None = None,
 ) -> dict:
     """Build the full template context dictionary."""
 
@@ -787,6 +808,8 @@ def build_context(
         "sv_downloads": cnv_sv.get("sv_downloads", {}),
         "cn_downloads": cnv_sv.get("cn_downloads", {}),
         "cnv_sv_summary": cnv_sv.get("cnv_sv_summary", {}),
+        # the reference's contig manifest (--genbank route) or None: contig order + the multi-copy contigs
+        "contig_manifest": load_contig_manifest(contig_manifest),
     }
 
 
@@ -904,7 +927,12 @@ def template_context(ctx: dict, run: dict | None, outdir: str | None, report_dir
         if src:
             downloads[key] = src
 
-    chromosomes = (snv or {}).get("contigs") or [r["chromosome"] for r in (contig or {}).get("rows", [])]
+    # Contig order for the page's sorts: the manifest's (the reference's record order, complete) when the run
+    # had one, else the order the contigs first appear in the cohort VCF (reference order too), else the TIDDIT
+    # table's rows (.fai order). All three are the reference's order; the first two cover every contig.
+    manifest = ctx.get("contig_manifest")
+    chromosomes = ([r["contig"] for r in manifest] if manifest else None) \
+        or (snv or {}).get("contigs") or [r["chromosome"] for r in (contig or {}).get("rows", [])]
     return {
         "report": {
             "title": ctx["title"], "pipeline_name": "yAMP", "version": ctx.get("pipeline_version"),
@@ -920,7 +948,7 @@ def template_context(ctx: dict, run: dict | None, outdir: str | None, report_dir
         "load_web_fonts": False,
         "samples": samples,
         "chromosomes": chromosomes,
-        "mito_contigs": MITO_CONTIGS,
+        "multi_copy_contigs": multi_copy_contigs(manifest),
         "igv_locus_template": IGV_LOCUS_TEMPLATE,
         "qc_thresholds": qc_thresholds,
         "cn_thresholds": CN_THRESHOLDS,
@@ -1025,6 +1053,12 @@ def main():
         help="PASS filter stats TSV files from FILTER_PASS_VCF (sample, caller, total, pass)",
     )
     parser.add_argument(
+        "--contig-manifest", type=Path, default=None,
+        help="The reference's contig_manifest.csv (reference/<db>/, --genbank route): its type column names the "
+             "multi-copy contigs the Whole chromosomes table grades against the cohort median, and its row order is "
+             "the page's contig order. Absent on the pre-built route: every contig is then graded against 1.",
+    )
+    parser.add_argument(
         "--outdir", type=str, default=None,
         help="Where the complete pipeline output lands (local path or az:// URL); printed in the header",
     )
@@ -1071,6 +1105,7 @@ def main():
         joint_vcf=args.joint_vcf,
         prepared_vcf=args.prepared_vcf,
         pass_stats_files=args.pass_stats,
+        contig_manifest=args.contig_manifest,
     )
     context = template_context(context, run=load_run_info(args.run_info), outdir=args.outdir,
                                report_dir=args.report_dir, qc_thresholds=load_qc_thresholds(args.qc_thresholds))

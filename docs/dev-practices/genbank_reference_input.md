@@ -1,6 +1,6 @@
 # Reference genome from one GenBank file: design note
 
-**Status: design agreed 2026-11-02; O.1 (the codon-table line in today's caches, §4.3) and O.2 (the two build tasks of §5.1, module-tested) done the same day; O.3, the wiring, done 2026-11-09: `--genbank` runs both tasks before alignment, fills upstream's `fasta` / `snpeff_cache` / `report_gff3` channels and `snpeff_db`, both routes at once or neither is a start-up error, `reference/<db>/` is published, the pre-built route gained the cache-vs-FASTA preflight row, the four verdict rows reach the input-checks table in a QC-only run (`tests/genbank_route.nf.test`). Not yet: the output scripts (§5.4, §5.6; O.4), the contract test on this route (§7; O.5), the launch form (§6; O.6), the user docs (O.7) and `ottilie/v2` (O.8).** Opened 2026-10-29 from a question about why
+**Status: design agreed 2026-11-02; O.1 (the codon-table line in today's caches, §4.3) and O.2 (the two build tasks of §5.1, module-tested) done the same day; O.3, the wiring, done 2026-11-09: `--genbank` runs both tasks before alignment, fills upstream's `fasta` / `snpeff_cache` / `report_gff3` channels and `snpeff_db`, both routes at once or neither is a start-up error, `reference/<db>/` is published, the pre-built route gained the cache-vs-FASTA preflight row, the four verdict rows reach the input-checks table in a QC-only run (`tests/genbank_route.nf.test`). O.4, the output scripts, done 2026-11-09: the two cohort-table scripts take the reference's `.fai` and follow its order (the roman-numeral lists are gone), `generate_index.py` reads the manifest's `type` column for the multi-copy contigs and has no name list any more (§5.4, §5.6). Not yet: the contract test on this route (§7; O.5), the launch form (§6; O.6), the user docs (O.7) and `ottilie/v2` (O.8).** Opened 2026-10-29 from a question about why
 the pipeline takes FASTA + SnpEff cache where the legacy AMP v1 pipeline took a single GenBank; reviewed
 decision by decision on 2026-11-02 with the launch form and a future ALEdb registration in view. Every
 number here was measured with the pipeline's own snpEff image (`quay.io/biocontainers/snpeff:5.1--hdfd78af_2`)
@@ -336,10 +336,16 @@ The only computation in the pipeline that cares which contig is mitochondrial is
 chromosomes* table: a multi-copy contig is coloured and labelled gain or loss against the cohort median of
 its fold change, not against 1, because mtDNA sits at tens of copies (`index.html.j2` around line 984). CNVKit
 drops the contig by its GC mask whatever it is called (`cnvkit_gc_bin_mask.md`) and TIDDIT reports every
-contig, so no caller changes. `generate_index.py` reads the manifest's `type` column: `mitochondrion` and
-`plasmid` get the cohort-median rule, everything else the baseline of 1. A file without qualifiers yields
-`other` for every contig and the mitochondrial cell then reads as a gain in every sample, which is what the
-data says; no guessing from names. The `MITO_CONTIGS` list and the template's fallback list go.
+contig, so no caller changes. `generate_index.py` reads the manifest's `type` column (done 2026-11-09, O.4:
+`--contig-manifest`, handed down from `GENBANK_REFERENCE` through `MUTATION_REPORT` to `GENERATE_INDEX`;
+the standalone `generate_mutation_report.nf` picks it up from `reference/*/contig_manifest.csv` in the outdir):
+every type other than `chromosome` and `other`, that is an organelle value such as `mitochondrion`, and `plasmid`,
+gets the cohort-median rule, everything else the baseline of 1. A file without qualifiers yields `other` for
+every contig and the mitochondrial cell then reads as a gain in every sample, which is what the data says; no
+guessing from names. On the pre-built route there is no manifest at all and the same holds for Mito (user
+decision 2026-11-09: no name-list fallback; dropping the special case from the table altogether is a later
+review item, `roadmap.md` → dashboard follow-ups). The `MITO_CONTIGS` list and the template's fallback list
+are gone; the table's legend and the Methods section say which rule applied to the run.
 
 ### 5.5 The identifier verdict row
 
@@ -382,8 +388,11 @@ dashboard takes its contig sequence from the order records first appear in the c
 fallback). The FASTA is written in record order, so the user's GenBank decides, and an NCBI file lists I to
 XVI then Mito. Two scripts are the odd ones out: `bin/contig_copy_number.py` and `bin/sv_cohort_matrix.py`
 sort by a hard-coded roman-numeral list, and with any other names the SV matrix puts every contig in one
-bucket and interleaves rows by position. Both switch to `.fai` order, as `bin/build_cn_matrix.py` already
-does. A user-adjustable, cosmetic order for the index tables is a deferred item (§8).
+bucket and interleaves rows by position. Both take `--fai` since 2026-11-09 (O.4) and follow its order, as
+`bin/build_cn_matrix.py` already did; `tests/build_sv_matrix.nf.test` and `tests/build_contig_cn.nf.test` pin it
+on fixtures whose `.fai` order (chrII, chrI, pA) is neither alphabetical nor roman. The index's own contig order
+(`chromosomes` in the template context) is the manifest's when the run had one. A user-adjustable, cosmetic
+order for the index tables is a deferred item (§8).
 
 ## 6. Launch form and the two routes
 
@@ -413,6 +422,12 @@ does. A user-adjustable, cosmetic order for the index tables is a deferred item 
   test GenBank, a lab-style copy without VERSION, a copy with a duplicate LOCUS); the COX2 codon-table test
   (§4.4); the pre-built route on the cache the builder produced.
 - **Gate tests**: `tests/qc_gate.sh a` (new allow-list entries), `tests/preflight_reference.nf.test`.
+- **Output scripts (O.4, 2026-11-09)**: `tests/build_sv_matrix.nf.test` (2 cases) and `tests/build_contig_cn.nf.test`
+  (1 case) on the `contig_order/` fixtures; the e2e snapshot is unchanged because the test set's `.fai` order equals
+  the old list and has no Mito. The Mito rule cannot be seen on the test set, so the evidence is the full-genome
+  4-sample pilot on the pre-built route (`run_ottilie_pilot.sh`, 2026-11-09: no manifest, Mito graded against 1,
+  see `PLAN_next_checklist.md` §O O.4 for what its index shows) plus a standalone render of the same bundle with
+  a manifest typing Mito `mitochondrion` (Mito column *vs median*, legend names it).
 - **Test data `ottilie/v2`** on both accounts as the closing package (`08_upload_test_data.sh` and
   `publish_test_data.sh` with `PREFIX=ottilie/v2`): the codon-table fix changes the full reference's cache,
   which under §13 is a new data version; `v1` stays untouched for older clones and baselines. Baseline

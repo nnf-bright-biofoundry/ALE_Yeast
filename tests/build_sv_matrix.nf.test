@@ -1,0 +1,72 @@
+nextflow_process {
+
+    name "BUILD_SV_MATRIX unit"
+    script "../modules/local/build_sv_matrix/main.nf"
+    process "BUILD_SV_MATRIX"
+    tag "ottilie"
+    tag "module"
+
+    // Run with: nf-test test -c tests/nf-test-ottilie.config tests/build_sv_matrix.nf.test
+    //
+    // bin/sv_cohort_matrix.py on a hand-made SVDB cross-caller cohort VCF (tests/fixtures/contig_order/,
+    // see the fixtures README): four records on three contigs whose .fai order (chrII, chrI, pA) is
+    // neither alphabetical nor the roman-numeral list the script sorted by until 2026-11-09. The rows
+    // must come out in .fai order, then position (docs/dev-practices/genbank_reference_input.md §5.6);
+    // the cell rules (Manta from FORMAT GT/FT, TIDDIT from the propagated <sample>.tiddit*_SAMPLE keys,
+    // docs/variant-calling/sv_merge.md) are asserted on the same four records in both views.
+
+    def FX = "\$projectDir/tests/fixtures/contig_order"
+
+    test("union view: rows in .fai order, cells from the merged record") {
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = [ [ id: 'sv_cohort_union', merge_mode: 'union' ], file("$FX/sv_cohort_merged.vcf") ]
+                input[1] = [ 'S1', 'S2' ]
+                input[2] = file("$FX/ref.fa.fai")
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert file(process.out.csv[0]).name == 'sv_cohort_matrix_union.csv' },
+                { assert path(process.out.csv[0]).readLines() == [
+                    'chrom,pos,chrom2,end,svtype,svlen,S1,S2',
+                    'chrII,100,pA,50,BND,0,-,Manta+TIDDIT',
+                    'chrII,2000,chrII,2300,DUP,300,TIDDIT,-',
+                    'chrI,1000,chrI,2500,DEL,1500,Manta,-',
+                    'pA,10,pA,10,INS,120,Manta,Manta',
+                ] },
+                { assert path(process.out.versions[0]).readLines().any { it.contains('sv_cohort_matrix: "3.2"') } }
+            )
+        }
+    }
+
+    test("pass view: the same order; a Manta genotype with FT MinGQ is not support") {
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = [ [ id: 'sv_cohort_union_pass', merge_mode: 'union_pass' ], file("$FX/sv_cohort_merged.vcf") ]
+                input[1] = [ 'S1', 'S2' ]
+                input[2] = file("$FX/ref.fa.fai")
+                """
+            }
+        }
+        then {
+            assertAll(
+                { assert process.success },
+                { assert file(process.out.csv[0]).name == 'sv_cohort_matrix_union_pass.csv' },
+                { assert path(process.out.csv[0]).readLines() == [
+                    'chrom,pos,chrom2,end,svtype,svlen,S1,S2',
+                    'chrII,100,pA,50,BND,0,-,TIDDIT',
+                    'chrII,2000,chrII,2300,DUP,300,TIDDIT,-',
+                    'chrI,1000,chrI,2500,DEL,1500,Manta,-',
+                    'pA,10,pA,10,INS,120,Manta,Manta',
+                ] }
+            )
+        }
+    }
+}

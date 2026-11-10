@@ -20,9 +20,14 @@ so the dashboard renders all copy-number tables with one formatter and one fold-
 Whole-contig only. This is the one place the mitochondrial contig is quantified: CNVKit
 drops every Mito bin via its hard-coded 0.30-0.70 GC mask (yeast mtDNA is ~17% GC).
 
+Rows are in reference order: the contig order of the reference's .fai (= the FASTA's, = the
+GenBank's record order on the --genbank route). Nothing is sorted by name; a contig the .fai
+lacks (none in practice: TIDDIT reports the reference's contigs) goes last, by name.
+
 Usage (from BUILD_CONTIG_CN):
     contig_copy_number.py --tabs *.tiddit.ploidies.tab \
-        --ploidies CBR110-15-R3a=1 NODRUG-GM2=1 --csv contig_copy_number.csv
+        --ploidies CBR110-15-R3a=1 NODRUG-GM2=1 --fai reference.fa.fai \
+        --csv contig_copy_number.csv
 """
 
 import argparse
@@ -31,16 +36,19 @@ import math
 import sys
 from pathlib import Path
 
-CHR_ORDER = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII",
-             "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI"]
 TAB_SUFFIX = ".tiddit.ploidies.tab"
 
 
-def chr_sort_key(chrom):
-    try:
-        return (0, CHR_ORDER.index(chrom))
-    except ValueError:
-        return (1, chrom)
+def load_contig_order(fai_path):
+    """Contig names in .fai order (samtools faidx writes them in FASTA order)."""
+    with open(fai_path) as f:
+        return [line.split("\t")[0] for line in f if line.strip()]
+
+
+def contig_sort_key(order):
+    """Sort key: position in the .fai, then (last) the name for a contig the .fai lacks."""
+    index = {c: i for i, c in enumerate(order)}
+    return lambda chrom: (index.get(chrom, len(order)), chrom)
 
 
 def sample_from_path(path):
@@ -67,6 +75,7 @@ def main():
     ap.add_argument("--tabs", required=True, nargs="+", help="<sample>.tiddit.ploidies.tab files")
     ap.add_argument("--ploidies", required=True, nargs="+",
                     help="sample=n pairs: the -n ploidy TIDDIT was run with for each sample")
+    ap.add_argument("--fai", required=True, help="reference .fai: its contig order is the row order")
     ap.add_argument("--csv", required=True, help="output CSV")
     args = ap.parse_args()
 
@@ -85,7 +94,8 @@ def main():
         data[s] = parse_tab(tab)
     samples = sorted(data)
 
-    contigs = sorted({c for s in samples for c in data[s]}, key=chr_sort_key)
+    order = load_contig_order(args.fai)
+    contigs = sorted({c for s in samples for c in data[s]}, key=contig_sort_key(order))
 
     fieldnames = ["chromosome"]
     for s in samples:
@@ -114,6 +124,7 @@ def main():
             w.writerow(row)
 
     print(f"Samples: {', '.join(samples)}")
+    print(f"Reference: {args.fai} ({len(order)} contigs)")
     print(f"Contigs: {len(contigs)}")
     print(f"Output: {out}")
 
