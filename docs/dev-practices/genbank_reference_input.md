@@ -447,6 +447,9 @@ order for the index tables is a deferred item (§8).
 - **ALEdb length and md5 per contig**: database-side work (§3.3).
 - **nf-core `snpeff/build` contribution**: the build task is written in nf-core shape; a submission needs a
   small GenBank in nf-core/test-datasets, not checked.
+- **Non-coding gene models and a GenBank plausibility check** (after O.9): the pre-built cache models every
+  tRNA as protein-coding and `-genbank` gives tRNA/ncRNA genes no transcript at all; measurements, the 12
+  test-set annotation differences by cause and the proposed check: [`genbank_noncoding_models.md`](genbank_noncoding_models.md).
 - **Path B (`build_snpeff_cache.sh`) and Path A**: move to an appendix of `prepare_reference.md` for people
   who bring a pre-built cache; Path A's converter is retired by the builder.
 
