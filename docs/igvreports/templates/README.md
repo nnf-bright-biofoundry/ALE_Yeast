@@ -36,6 +36,7 @@ ctx = dict(
   samples=["CBR110-15-R3a", "NODRUG-GM2"],   # display order everywhere
   chromosomes=["I", "II", …, "Mito"],         # contig order for sorting (optional): the reference's contig manifest when the run had one (--genbank route), else the order of first appearance in the cohort VCF, else the TIDDIT table's rows; all three are reference (.fai) order
   multi_copy_contigs=["Mito"],                # coloured vs the cohort median of their fold change, not vs 1: the contigs whose manifest `type` is neither `chromosome` nor `other` (an /organelle value such as mitochondrion, or plasmid). [] without a manifest (pre-built route: a FASTA names no organelle), and then every contig, Mito included, is coloured vs 1; the legend and Methods say which applied. No name list, no template fallback (2026-11-09; was mito_contigs=["Mito","chrM","MT"])
+  has_contig_manifest=False,                  # True when the run had a contig manifest (--genbank route). Only wording: with a manifest and an empty multi_copy_contigs the legend and Methods say the GenBank reference marks no organelle or plasmid, where without one they say a FASTA has no manifest
   igv_locus_template="samples/{sample}_hc_report.html?locus={chrom}:{pos}",
 
   qc_thresholds=dict(cov_pass=30, cov_fail=15, breadth_pass=95, breadth_fail=90,

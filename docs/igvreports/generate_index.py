@@ -949,6 +949,8 @@ def template_context(ctx: dict, run: dict | None, outdir: str | None, report_dir
         "samples": samples,
         "chromosomes": chromosomes,
         "multi_copy_contigs": multi_copy_contigs(manifest),
+        # a manifest that names no multi-copy contig is not "no manifest": the legend and Methods word the two apart
+        "has_contig_manifest": bool(manifest),
         "igv_locus_template": IGV_LOCUS_TEMPLATE,
         "qc_thresholds": qc_thresholds,
         "cn_thresholds": CN_THRESHOLDS,

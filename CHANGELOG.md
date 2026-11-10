@@ -45,7 +45,9 @@
   reference states in its qualifiers; the `Mito` / `chrM` / `MT` name list is gone. A reference given as FASTA
   has no manifest, so there every contig, the mitochondrion included, is now graded against 1 (decision 2026-11-09;
   on the 4-sample pilot the Mito column therefore reports an amplification in the parent and a loss in one
-  evolved clone, values the table always showed). The legend and the Methods section say which rule applied.
+  evolved clone, values the table always showed). The legend and the Methods section say which rule applied
+  (2026-11-10, found in review: a GenBank reference with chromosomes only was described as a FASTA reference, and
+  two or more multi-copy contigs showed stray markup in the Methods sentence; wording only, no cell changed).
   Tests: `tests/build_sv_matrix.nf.test`, `tests/build_contig_cn.nf.test` (fixtures `tests/fixtures/contig_order/`,
   an order that is neither alphabetical nor roman); the e2e snapshot is unchanged (the test set's order equals the
   old list and has no Mito). Template contract: `docs/igvreports/templates/README.md`.
