@@ -157,7 +157,7 @@ if (params.tools && (params.tools.split(',').contains('vep')    || params.tools.
         params.build_only_index,
         params.download_cache,
         params.dbsnp,
-        params.fasta ?: params.genbank,     // read-group DS: only; the GenBank route has no --fasta
+        params.fasta ?: params.genbank,     // read-group DS only (BAM input; FASTQ input: addReadgroupToMeta in workflows/sarek/main.nf); the GenBank route has no --fasta
         params.germline_resource,
         params.intervals,
         params.joint_germline,

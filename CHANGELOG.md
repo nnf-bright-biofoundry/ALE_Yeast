@@ -11,7 +11,8 @@
   non-standard contig; the build task (`SNPEFF_BUILD`, `snpEff build -genbank`) makes the snpEff database
   and verifies it with its two gates. Everything downstream is unchanged: the FASTA, the database and the
   GFF3 flow into upstream's channels, so no caller, report or output knows which route ran. `snpeff_db`
-  defaults to the file's basename (`--snpeff_db` overrides). `reference/<db>/` holds the GenBank itself,
+  defaults to the file's basename (`--snpeff_db` overrides); the aligned reads' read-group `DS` field names the
+  GenBank file (2026-11-10, found in review: FASTQ input had read `DS:null`). `reference/<db>/` holds the GenBank itself,
   the FASTA, the GFF3, the manifest, the database and the build log, in every run. Four rows join the
   *yAMP input checks* table: *GenBank contig identifiers*, *GenBank genetic code*, *snpEff build: protein
   check*, *snpEff build: contig names*. `--genbank` together with `--fasta`, `--snpeff_cache`,
