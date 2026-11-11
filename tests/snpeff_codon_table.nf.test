@@ -34,10 +34,10 @@ nextflow_process {
     // VCF's CHROM the same way, while the codonTable line is keyed on the LOCUS name chrM: the variant
     // must still come out synonymous, and the record keeps CHROM chrM. Measured 2026-11-09, pinned here.
     //
-    // Case 5 (the pre-built route on the cache the builder makes): the 4-chromosome test GenBank goes
+    // Case 5 (the pre-built route on the cache the builder makes): the 5-contig test GenBank goes
     // through GENBANK_REFERENCE and SNPEFF_BUILD in the setup, and the database is then handed to the
-    // module the way a pre-built --snpeff_cache / --snpeff_db pair is, on the 100-record joint VCF of
-    // the test set. Every record must annotate (no ERROR_CHROMOSOME_NOT_FOUND) and the four published
+    // module the way a pre-built --snpeff_cache / --snpeff_db pair is, on the committed 100-record joint VCF of
+    // the v1 test set (a fixture). Every record must annotate (no ERROR_CHROMOSOME_NOT_FOUND) and the four published
     // mutations of the evolved clone (data/ottilie/pilot_truth_set.csv) must read as published. This
     // is what keeps reference/<db>/snpeff_cache of a GenBank run usable as a pre-built cache.
     //

@@ -37,6 +37,32 @@
 
 ### Changed
 
+- **Test data version 2, `ottilie/v2` (2026-11-11).** The release test set is cut again, from the SRA reads
+  of the same two samples: read pairs on chromosomes I, IV, VII, XV **and Mito**, a seeded 0.67 of the pairs
+  of both samples (`samtools view -s 42.67`: about 30x for the parent, 60x for the evolved clone), 267 MB
+  of FASTQ for 370 MB; the test reference has five contigs. Version 1 held every pair of four chromosomes
+  taken from the CRAMs of an untrimmed pipeline run; a set cut from today's CRAMs would be trimmed before
+  the pipeline sees it, so the generator (`generate_test_data.sh`) now has the SRA route only and runs its
+  alignment in one pinned image. **Depth was chosen on the structural-variant calls**: four cuts were run
+  through the pipeline, the four published SNVs and the chr I gain hold down to 20x, but at 30x joint Manta
+  genotypes the evolved clone hom-ref at five of the strain's ten junction events (its library gives about
+  a third of the parent's junction-spanning pairs per unit depth); at 60x it carries all of them
+  (`DATA_PROVENANCE.md` → *Truth set*). **New: a truth gate** (`check_test_data_truth.py` +
+  `test_set_sv_floor.tsv`): after a cut, one pipeline run must show the four SNVs, the chr I gain, ten
+  junction records and the Mito row of the contig manifest; it stamps the FASTQs, and the upload scripts
+  refuse an unstamped set. **What the contract test gains with Mito:** the genetic-code row reads
+  `Mito=3 (Yeast_Mitochondrial)`, the manifest types the contig `mitochondrion`, the index grades it
+  against the cohort median, the TIDDIT contig table has a Mito row and the CNVKit tables none (the GC
+  mask). **What moves in the snapshot** (re-recorded, second run green): no output name (1,029), 157
+  tasks as before, 129 of 154 file hashes, the cohort VCF (101 records: 86 nuclear for 100 at full depth,
+  15 on Mito) and 7 of 9 report tables. One thing to know when reading the SV table: 33 of its 45 PASS
+  rows are on Mito, 31 of them small TIDDIT calls in the parent only (its mtDNA is at 300x); that is how
+  TIDDIT behaves on this contig, on the full-genome pilot too, and is a roadmap row. Both blob accounts
+  carry `ottilie/v2` (every pre-built file too, the snpEff databases with the mitochondrial `codonTable`
+  line); every profile, launcher and script reads it; **`ottilie/v1` is frozen** for the `v1.1.0` tag and
+  the upload scripts refuse to write there. Outputs of `main` are no longer comparable with any baseline
+  cut on v1 (`output_comparison.md` §2.10). Validation: contract test recorded and rerun green (536 s,
+  537 s), module tests of the reference route, `qc_gate (a)` on both routes.
 - **The reference guide starts from one GenBank file (2026-11-11).** `docs/usage/prepare_reference.md` now
   opens with `--genbank`: the file-name rule (lowercase `.gb`, `.gbk`, `.gbff`, `.genbank`, optionally
   `.gz`; the name without it is the database name unless `--snpeff_db`), what a good file carries and what

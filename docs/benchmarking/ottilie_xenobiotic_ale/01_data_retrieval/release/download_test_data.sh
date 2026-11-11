@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Fetch the ottilie e2e test-data from a STABLE PUBLIC Azure Blob URL (no SAS, no az login) and write the
 # machine-correct samplesheet. FAST path to run the ottilie nf-test / pipeline on a fresh checkout (e.g. a
-# newly deployed server) WITHOUT regenerating from CRAM/SRA — that heavier reproducible path is
-# generate_test_data.sh (needs the full reference + a prior pilot run).
+# newly deployed server) WITHOUT regenerating from SRA — that heavier reproducible path is
+# generate_test_data.sh (needs the full reference, the two SRA runs and docker).
 #
-# Grabs the single bundle tarball (~399 MB compressed) and extracts it into data/ottilie/:
-#   fastq_test/                     chr I/IV/VII/XV subset reads, 2 samples
+# Grabs the single bundle tarball (~325 MB compressed) and extracts it into data/ottilie/:
+#   fastq_test/                     2 samples, reads on chr I/IV/VII/XV + Mito, a seeded 0.67 of the pairs;
+#                                   CUT_PARAMETERS.tsv (the cut), TRUTH_GATE.txt (the checks it passed)
 #   S288C_reference_test/           subset FASTA + .fai + .dict + .gb + snpeff_cache/ + chromosomes/
 #   S288C_reference/                FULL genome — FASTA + .gb + .gff3 + snpeff_cache/ + chromosomes/
 #   README.md                       what the data is: sample↔FASTQ↔SRA, truth set, reference pairing
@@ -23,7 +24,7 @@
 # Usage (from anywhere):
 #   bash docs/benchmarking/ottilie_xenobiotic_ale/01_data_retrieval/release/download_test_data.sh
 # Host elsewhere / different version? override the base URL:
-#   BLOB_BASE=https://<acct>.blob.core.windows.net/<container>/ottilie/v1  bash .../download_test_data.sh
+#   BLOB_BASE=https://<acct>.blob.core.windows.net/<container>/ottilie/v2  bash .../download_test_data.sh
 #
 # After it finishes:
 #   nextflow run main.nf -profile ottilie_test,docker
@@ -37,7 +38,7 @@ OUT="${OUT:-$REPO_ROOT/data/ottilie}"   # override to stage into an isolated dir
 
 # Stable public base URL (container + versioned prefix). No SAS token needed.
 # Host provisioned by infra/azure/ (account 'aletestdatapublic', public 'releases' container).
-BLOB_BASE="${BLOB_BASE:-https://aletestdatapublic.blob.core.windows.net/releases/ottilie/v1}"
+BLOB_BASE="${BLOB_BASE:-https://aletestdatapublic.blob.core.windows.net/releases/ottilie/v2}"
 TARBALL="ottilie_test_data.tar.gz"
 
 command -v curl >/dev/null || { echo "ERROR: curl not found." >&2; exit 1; }
@@ -69,11 +70,14 @@ tar -xzf "$TMP/$TARBALL" -C "$OUT"
 # For a Seqera/Batch run against blob URLs instead, use samplesheet_test_blob.csv from $BLOB_BASE.
 OUT_FASTQ="$OUT/fastq_test"
 SAMPLESHEET="$OUT/samplesheet_test.csv"
-cat > "$SAMPLESHEET" <<CSV
-experiment,sample,status,clonal_or_population,ploidy,sex,lane,fastq_1,fastq_2
-Ottilie_test,NODRUG-GM2,0,clonal,1,XX,L001,$OUT_FASTQ/NODRUG-GM2_chrI_IV_VII_XV_R1.fastq.gz,$OUT_FASTQ/NODRUG-GM2_chrI_IV_VII_XV_R2.fastq.gz
-Ottilie_test,CBR110-15-R3a,0,clonal,1,XX,L001,$OUT_FASTQ/CBR110-15-R3a_chrI_IV_VII_XV_R1.fastq.gz,$OUT_FASTQ/CBR110-15-R3a_chrI_IV_VII_XV_R2.fastq.gz
-CSV
+# The FASTQ names carry the cut's seed and fraction; they are read from the cut record in the bundle.
+CUT="$OUT_FASTQ/CUT_PARAMETERS.tsv"
+[[ -f "$CUT" ]] || { echo "ERROR: $CUT not in the bundle (a version 1 bundle? this script reads ottilie/v2 and later)." >&2; exit 1; }
+{
+    echo "experiment,sample,status,clonal_or_population,ploidy,sex,lane,fastq_1,fastq_2"
+    awk -F'\t' -v fq="$OUT_FASTQ" 'NR>1 {print "Ottilie_test," $1 ",0,clonal,1,XX,L001," fq "/" $7 "," fq "/" $9}' "$CUT"
+} > "$SAMPLESHEET"
+( cd "$OUT_FASTQ" && md5sum -c --quiet ./*.fastq.gz.md5 ) || { echo "ERROR: a FASTQ does not match its .md5 sidecar." >&2; exit 1; }
 
 # --- Verify the key inputs the ottilie_test profile references are present ---
 echo ""

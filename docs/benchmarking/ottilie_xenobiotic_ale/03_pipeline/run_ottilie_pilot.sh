@@ -17,7 +17,7 @@
 # Recipe + how to resume a killed run with its session id: docs/usage/long_runs_detached.md
 #
 # Previous run: 2026-07-10, session feea0f276c82158b2065aad5a6bac696 -> output_ottilie/
-#               (kept: 01_data_retrieval/release/generate_test_data.sh --from-cram reads its CRAMs)
+#               (its CRAMs were the source of test data v1; v2 is cut from the SRA FASTQs)
 
 set -euo pipefail
 

@@ -52,7 +52,7 @@ EOF
     fi
 done
 
-BLOB="${OTTILIE_AZ_BASE:-az://aletest/ottilie/v1}"
+BLOB="${OTTILIE_AZ_BASE:-az://aletest/ottilie/v2}"
 OUTDIR="${OUTDIR:-az://aletest/ottilie-azurebatch-out}"
 
 echo "engine   : NXF_VER=$NXF_VER"

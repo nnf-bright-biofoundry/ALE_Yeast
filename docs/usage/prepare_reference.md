@@ -237,8 +237,8 @@ mitochondrion (code 3: `TGA` is tryptophan), so a synonymous change at such a co
   `Bacterial_and_Plant_Plastid`, 12 `Alternative_Yeast_Nuclear` (CTG-clade yeasts).
 - An existing cache is fixed by appending the line to `<snpeff_cache>/<db>/snpEff.config` (and to the
   parent `snpEff.config`, if you keep one): the `.bin` files do not change. The project's `R64-1-1.105`
-  caches carry `R64-1-1.105.Mito.codonTable : Yeast_Mitochondrial` since 2026-11-02; the `ottilie/v1`
-  copies on blob storage still lack it until the `ottilie/v2` test-data package.
+  caches carry `R64-1-1.105.Mito.codonTable : Yeast_Mitochondrial` since 2026-11-02; the test data
+  on blob storage carries it from `ottilie/v2` on (2026-11-11); the frozen `ottilie/v1` copies do not.
 - `tests/snpeff_codon_table.nf.test` checks the shipped cache with a synthetic COX2 variant.
 
 ## Provenance and retired scripts
@@ -249,7 +249,7 @@ mitochondrion (code 3: `TGA` is tryptophan), so a synonymous change at such a co
 - `docs/prepare_input/process_GeneBank/generate_cache/gen_cache.sh` was **retired 2026-09-08**: it was
   hard-coded to a dev-VM directory and to a private genome, and produced sarek-3.4-era directory layouts
   nobody uses. Path A's cache step and Path B replace it; it remains in git history.
-- The 4-chromosome test GenBank (`S288C_R64_test.gb`, the reference of the test profiles since 2026-11-11)
+- The test GenBank (`S288C_R64_test.gb`, four chromosomes and Mito, the reference of the test profiles since 2026-11-11)
   is NCBI's `GCF_000146045.2_R64_genomic.gbff` with the LOCUS and VERSION lines renamed to Ensembl's names
   (`I` … `XVI`, `Mito`) by `docs/benchmarking/ottilie_xenobiotic_ale/02_reference_prep/rename_genbank_chromosomes.sh`,
   then cut to four records by `generate_test_data.sh`

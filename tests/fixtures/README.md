@@ -72,10 +72,13 @@ Used by `tests/fastp_preprocessing.nf.test`. The first 1 000 read pairs of the o
 CBR110-15-R3a (`data/ottilie/fastq_test/`, real Nextera adapter read-through and real HiSeq 2500
 qualities), with two synthetic edits so one small pair exercises every preprocessing step: read names
 rewritten to a NovaSeq-style instrument prefix (`@A00123:…`, so fastp's read-name poly-G auto-detection
-would fire if not disabled) and a 15-base Q2 poly-G tail appended to every read. Regenerate:
+would fire if not disabled) and a 15-base Q2 poly-G tail appended to every read. The committed pair was
+cut from the **v1** test FASTQs (`ottilie/v1`, kept locally as `data/ottilie/v1_local/fastq_test/` on the
+dev VM); the v2 files have other names and another read order, so the same recipe on them gives a
+different, equally usable pair. Regenerate from v1:
 
 ```bash
-D=data/ottilie/fastq_test
+D=data/ottilie/v1_local/fastq_test      # or the fastq_test/ of the ottilie/v1 bundle
 for r in 1 2; do zcat $D/CBR110-15-R3a_chrI_IV_VII_XV_R$r.fastq.gz | head -4000 \
   | awk -v r=$r 'NR%4==1{n++; $0="@A00123:45:HXXXXDSXX:1:1101:"n":1000 "r":N:0:ACGTACGT"} NR%4==2{$0=$0"GGGGGGGGGGGGGGG"} NR%4==0{$0=$0"###############"} {print}' \
   | gzip -n > tests/fixtures/fastp_R$r.fastq.gz; done
@@ -171,14 +174,15 @@ copy a FILTER tally from another run's VCF.
 
 ### `reference/S288C_R64_test.fa.gz` (+ `.fai`, `.gzi`, `.dict`) — the test set's reference, bgzipped, faithful
 
-The 4-chromosome test reference (`data/ottilie/S288C_reference_test/`, from `generate_test_data.sh`,
-not in the repo), bgzipped so the test runs on a fresh clone: 1.2 MB instead of 4.0 MB. GATK accepts
+The 4-chromosome reference of the **v1** test set (I, IV, VII, XV; the v2 reference in
+`data/ottilie/S288C_reference_test/` adds Mito), bgzipped so the test runs on a fresh clone: 1.2 MB instead
+of 4.0 MB. It stays the v1 reference because the VCF fixture it pairs with was called on it. GATK accepts
 a bgzipped FASTA given its `.gzi`, which the module takes in its fifth input (empty in the pipeline,
 which passes the plain FASTA). The `.dict` is the test set's with the local-path `UR:` field removed;
 contig names and lengths match the VCF header, which is all VariantFiltration checks.
 
 ```bash
-R=data/ottilie/S288C_reference_test/S288C_R64_test; D=tests/fixtures/reference
+R=data/ottilie/v1_local/S288C_reference_test/S288C_R64_test; D=tests/fixtures/reference   # the v1 reference
 bgzip -c $R.fa > $D/S288C_R64_test.fa.gz
 samtools faidx $D/S288C_R64_test.fa.gz          # writes .fai and .gzi
 sed -E 's/\tUR:[^\t]*//' $R.dict > $D/S288C_R64_test.dict

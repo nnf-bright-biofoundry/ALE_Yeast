@@ -1,0 +1,11 @@
+chrom	pos	svtype	mate_chrom	mate_pos	what
+IV	465972	BND	XV	159642	cassette junction, ADH1 terminator anchor
+IV	727462	BND	XV	159656	cassette junction, ADH1 terminator anchor
+IV	1279262	BND	XV	159660	cassette junction, ADH1 terminator anchor
+VII	1052881	BND	XV	159647	cassette junction, ADH1 terminator anchor
+XV	159645	BND	XV	349689	cassette junction, ADH1 terminator anchor
+XV	159647	BND	XV	619877	cassette junction, ADH1 terminator anchor
+XV	159654	BND	XV	931881	cassette junction, ADH1 terminator anchor
+XV	159668	DEL			cassette junction called as a deletion from the ADH1 anchor
+VII	530034	INS			84 bp insertion, strain background
+XV	722249	DEL			190 bp deletion, strain background

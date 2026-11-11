@@ -8,8 +8,8 @@ nextflow_pipeline {
     // Run with:  nf-test test -c tests/nf-test-ottilie.config tests/genbank_route.nf.test
     //
     // The reference given as ONE GenBank (docs/dev-practices/genbank_reference_input.md §5, §6), on the
-    // ottilie test set, whose profile names the 4-chromosome test GenBank
-    // (data/ottilie/S288C_reference_test/S288C_R64_test.gb; LOCUS I, IV, VII, XV with VERSION equal to
+    // ottilie test set, whose profile names the 5-contig test GenBank
+    // (data/ottilie/S288C_reference_test/S288C_R64_test.gb; LOCUS I, IV, VII, XV, Mito with VERSION equal to
     // LOCUS, the renamed test subset); snpeff_db is derived from its name. Run as a QC-only run (about
     // 5 min): GENBANK_REFERENCE and SNPEFF_BUILD run before alignment by construction, so the QC-only
     // run already produces reference/<db>/ and the input-checks rows, and the task list must be exactly
@@ -72,26 +72,29 @@ nextflow_pipeline {
                 { assert processes(launchDir) == QC_ONLY_ALLOW },
                 // reference/<db>/: the GenBank itself, FASTA, GFF3, manifest, the database and its build log
                 { assert path("$ref/S288C_R64_test.gb").exists() },
-                { assert path("$ref/S288C_R64_test.fa").readLines().findAll { it.startsWith('>') } == [ '>I', '>IV', '>VII', '>XV' ] },
-                { assert path("$ref/S288C_R64_test.gff3").readLines().findAll { !it.startsWith('#') }.every { it.split('\t')[0] in [ 'I', 'IV', 'VII', 'XV' ] } },
+                { assert path("$ref/S288C_R64_test.fa").readLines().findAll { it.startsWith('>') } == [ '>I', '>IV', '>VII', '>XV', '>Mito' ] },
+                { assert path("$ref/S288C_R64_test.gff3").readLines().findAll { !it.startsWith('#') }.every { it.split('\t')[0] in [ 'I', 'IV', 'VII', 'XV', 'Mito' ] } },
                 { assert man[0] == 'contig,version,length,md5,type,chromosome,transl_table,order' },
-                { assert man.size() == 5 },
+                { assert man.size() == 6 },
                 { assert man[1].startsWith('I,,230218,')    && man[1].endsWith(',1') },
                 { assert man[2].startsWith('IV,,1531933,')  && man[2].endsWith(',2') },
                 { assert man[3].startsWith('VII,,1090940,') && man[3].endsWith(',3') },
                 { assert man[4].startsWith('XV,,1091291,')  && man[4].endsWith(',4') },
+                // the mitochondrial record: typed from /organelle, genetic code from /transl_table
+                { assert man[5].startsWith('Mito,,85779,')  && man[5].endsWith(',mitochondrion,,3,5') },
                 { assert path("$cache/snpEffectPredictor.bin").exists() },
-                { assert path("$cache/snpEff.config").readLines() == [ 'S288C_R64_test.genome : S288C_R64_test' ] },
+                { assert path("$cache/snpEff.config").readLines() == [ 'S288C_R64_test.genome : S288C_R64_test',
+                                                                        'S288C_R64_test.Mito.codonTable : Yeast_Mitochondrial' ] },
                 { assert !path("$cache/genes.gbk").exists() },
                 { assert path("$ref/S288C_R64_test.snpeff_build.log").text.contains('Protein check:') },
                 // the four reference rows of the input-checks table (the test GenBank has no versioned accession,
                 // like any lab-made file: OK with a note)
-                { assert gb_rows[1] == 'GenBank contig identifiers\tOK\tS288C_R64_test.gb: 4 record(s), contig names are the LOCUS names (I, IV, VII, XV); no versioned accession on 4 of 4 (VERSION missing or equal to LOCUS: I, IV, VII, XV), as usual for a lab-made file; a database registration matches these contigs by sequence md5 (contig_manifest.csv)' },
-                { assert gb_rows[2] == 'GenBank genetic code\tOK\tS288C_R64_test.gb: no contig uses a non-standard code; 4 contig(s) standard (4 by the INSDC default, no /transl_table)' },
+                { assert gb_rows[1] == 'GenBank contig identifiers\tOK\tS288C_R64_test.gb: 5 record(s), contig names are the LOCUS names (I, IV, VII, XV, Mito); no versioned accession on 5 of 5 (VERSION missing or equal to LOCUS: I, IV, VII, XV, Mito), as usual for a lab-made file; a database registration matches these contigs by sequence md5 (contig_manifest.csv)' },
+                { assert gb_rows[2] == 'GenBank genetic code\tOK\tS288C_R64_test.gb: Mito=3 (Yeast_Mitochondrial); 4 contig(s) standard (4 by the INSDC default, no /transl_table)' },
                 { assert bd_rows[1].startsWith('snpEff build: protein check\tOK\t') && bd_rows[1].contains('(Errors: 0)') },
-                { assert bd_rows[2] == 'snpEff build: contig names\tOK\t4 contig name(s) in the cache, equal to the expected list' },
+                { assert bd_rows[2] == 'snpEff build: contig names\tOK\t5 contig name(s) in the cache, equal to the expected list' },
                 // the reference preflight on the derived files: GFF3 agrees, the cache row is SKIPPED on this route
-                { assert pf_rows[1] == 'FASTA vs GFF3 contig names\tOK\tall 4 contig name(s) of S288C_R64_test.gff3 are contigs of S288C_R64_test.fa (4 contigs)' },
+                { assert pf_rows[1] == 'FASTA vs GFF3 contig names\tOK\tall 5 contig name(s) of S288C_R64_test.gff3 are contigs of S288C_R64_test.fa (5 contigs)' },
                 { assert pf_rows[2].startsWith('snpEff cache vs FASTA contig names\tSKIPPED\t') },
                 // the rows are in the read-QC report, and the console carries no preflight line at all
                 { assert report.contains('GenBank contig identifiers') && report.contains('snpEff build: protein check') },
@@ -119,7 +122,7 @@ nextflow_pipeline {
                 { assert path("$ref/snpeff_cache/S288C_R64_test/snpEffectPredictor.bin").exists() },
                 { assert path("$ref/S288C_R64_test.fa").exists() && path("$ref/S288C_R64_test.gff3").exists() && path("$ref/contig_manifest.csv").exists() },
                 { assert bd_rows[1].startsWith('snpEff build: protein check\tOK\t') && bd_rows[1].contains('(Errors: 0)') },
-                { assert bd_rows[2] == 'snpEff build: contig names\tOK\t4 contig name(s) in the cache, equal to the expected list' },
+                { assert bd_rows[2] == 'snpEff build: contig names\tOK\t5 contig name(s) in the cache, equal to the expected list' },
                 { assert pf_rows[2].startsWith('snpEff cache vs FASTA contig names\tSKIPPED\t') },
             )
         }

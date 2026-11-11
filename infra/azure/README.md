@@ -22,8 +22,8 @@ Creates:
   most locked-down option. Use `Container` if you need anonymous listing (`azcopy --recursive` /
   directory-staging); `None` to fall back to a private + SAS host.
 
-The ottilie test-data lives under the **`ottilie/v1/`** prefix inside the container, i.e.
-`https://<account>.blob.core.windows.net/releases/ottilie/v1/…` — the template outputs this directly as
+The ottilie test-data lives under the **`ottilie/v2/`** prefix inside the container, i.e.
+`https://<account>.blob.core.windows.net/releases/ottilie/v2/…` — the template outputs this directly as
 `ottilieTestDataBaseUrl` (and the bare container URL as `publicContainerUrl`).
 
 ### Deploy
@@ -51,7 +51,7 @@ az deployment group create \
 ```
 
 Deployment outputs include **`ottilieTestDataBaseUrl`** =
-`https://aletestdatapublic.blob.core.windows.net/releases/ottilie/v1` — this is exactly the `BLOB_BASE` the
+`https://aletestdatapublic.blob.core.windows.net/releases/ottilie/v2` — this is exactly the `BLOB_BASE` the
 data scripts use (`deploy.sh` prints it at the end).
 
 ### Wire it into the data scripts
@@ -63,11 +63,11 @@ Account / container / prefix must line up across the template and the publish/fe
 ```bash
 # Publish both shapes (tarball + individual tree + cache-tar + SHA256SUMS + url-samplesheet).
 # Account already has public access from the template → no ENABLE_PUBLIC_ACCESS needed.
-ACCOUNT=<account> CONTAINER=releases PREFIX=ottilie/v1 \
+ACCOUNT=<account> CONTAINER=releases PREFIX=ottilie/v2 \
   bash docs/benchmarking/ottilie_xenobiotic_ale/01_data_retrieval/release/publish_test_data.sh
 
 # Fetch on a fresh machine (no creds):
-BLOB_BASE=https://<account>.blob.core.windows.net/releases/ottilie/v1 \
+BLOB_BASE=https://<account>.blob.core.windows.net/releases/ottilie/v2 \
   bash docs/benchmarking/ottilie_xenobiotic_ale/01_data_retrieval/release/download_test_data.sh
 ```
 
@@ -82,5 +82,5 @@ Once the account name is fixed, bake `ACCOUNT`/`CONTAINER` into `publish_test_da
 VALIDATE_ONLY=1 bash infra/azure/deploy.sh
 
 # After deploy, confirm the public URL serves with NO credentials:
-curl -fsSL "https://aletestdatapublic.blob.core.windows.net/releases/ottilie/v1/SHA256SUMS" | head
+curl -fsSL "https://aletestdatapublic.blob.core.windows.net/releases/ottilie/v2/SHA256SUMS" | head
 ```

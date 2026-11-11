@@ -29,10 +29,20 @@ source ./00_vars.sh
 REPO_ROOT="$(git -C . rev-parse --show-toplevel 2>/dev/null || echo "$PWD/../../..")"
 SRC="${SRC:-$REPO_ROOT/data/ottilie}"
 CONTAINER="${CONTAINER:-aletest}"
-PREFIX="${PREFIX:-ottilie/v1}"
+PREFIX="${PREFIX:-ottilie/v2}"
+[[ "$PREFIX" != "ottilie/v1" ]] || {
+    echo "ERROR: ottilie/v1 is frozen (the v1.1.0 tag and its Launchpad version read it). Use ottilie/v2 or later." >&2
+    exit 1; }
 OVERWRITE="${OVERWRITE:-false}"
 
 [[ -d "$SRC" ]] || { echo "FATAL: test data not found at $SRC" >&2; exit 1; }
+# Only a cut that passed the truth gate goes up (same rule as the public publish script).
+[[ -f "$SRC/fastq_test/TRUTH_GATE.txt" ]] || {
+    echo "FATAL: $SRC/fastq_test/TRUTH_GATE.txt missing — run check_test_data_truth.py on a pipeline run of this cut first" >&2; exit 1; }
+for f in "$SRC"/fastq_test/*.fastq.gz; do
+    grep -qxF "md5	$(md5sum < "$f" | cut -d' ' -f1)	${f##*/}" "$SRC/fastq_test/TRUTH_GATE.txt" || {
+        echo "FATAL: ${f##*/} is not the file the truth gate was passed on" >&2; exit 1; }
+done
 [[ -d "$SRC/S288C_reference_test/snpeff_cache" ]] || {
     echo "FATAL: $SRC/S288C_reference_test/snpeff_cache missing — nothing to test" >&2; exit 1; }
 
@@ -40,7 +50,7 @@ echo "source     : $SRC"
 echo "destination: az://$CONTAINER/$PREFIX  (account $STORAGE_ACCOUNT)"
 echo "overwrite  : $OVERWRITE"
 echo
-echo "Uploading only the TEST subset (~400 MB), not all of data/ottilie (~64 GB):"
+echo "Uploading only the TEST subset, not all of data/ottilie (~64 GB):"
 du -sh "$SRC/S288C_reference_test" "$SRC/fastq_test" 2>/dev/null
 echo
 read -r -p "Proceed? [y/N] " reply

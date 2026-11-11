@@ -38,7 +38,7 @@ EOF
 fi
 
 CONTAINER="${CONTAINER:-aletest}"
-PREFIX="${PREFIX:-ottilie/v1}"
+PREFIX="${PREFIX:-ottilie/v2}"
 CACHE="az://$CONTAINER/$PREFIX/S288C_reference_test/snpeff_cache"
 DB="${DB:-R64-1-1.105}"
 

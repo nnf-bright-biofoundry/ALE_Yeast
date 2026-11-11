@@ -196,7 +196,7 @@ tarball item in `roadmap.md` → *Onboarding* is done first.
    refuses a database outside its compatibility window — `Database version: '5.2', Program version:
    '5.1', Compatible versions: '[5.1, 5.0]'` (sarek #1654). **Every ALE cache was built with 5.1**:
    `process_genbank_auto.sh`, `build_snpeff_cache.sh`, `02_reference_prep/prepare_s288c_reference.sh`, the published `snpeff_cache.tar.gz`,
-   and the `az://aletest/ottilie/v1/*/snpeff_cache/` directories. At the rebase: read the 5.4 window,
+   and the `az://aletest/ottilie/v{1,2}/*/snpeff_cache/` directories. At the rebase: read the 5.4 window,
    expect to **rebuild every cache** with the new container, and **re-record the e2e snapshot** (ANN
    strings can move with a rebuild). The standalone cache builder (roadmap) turns this into a re-run.
    `--download_cache` and the stock `R64-1-1.105` only become options again if the bumped snpEff reaches

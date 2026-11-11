@@ -1,6 +1,6 @@
 # Reference genome from one GenBank file: design note
 
-**Status: design agreed 2026-11-02; O.1 (the codon-table line in today's caches, §4.3) and O.2 (the two build tasks of §5.1, module-tested) done the same day; O.3, the wiring, done 2026-11-09: `--genbank` runs both tasks before alignment, fills upstream's `fasta` / `snpeff_cache` / `report_gff3` channels and `snpeff_db`, both routes at once or neither is a start-up error, `reference/<db>/` is published, the pre-built route gained the cache-vs-FASTA preflight row, the four verdict rows reach the input-checks table in a QC-only run (`tests/genbank_route.nf.test`). O.4, the output scripts, done 2026-11-09: the two cohort-table scripts take the reference's `.fai` and follow its order (the roman-numeral lists are gone), `generate_index.py` reads the manifest's `type` column for the multi-copy contigs and has no name list any more (§5.4, §5.6). O.5, the contract test, done 2026-11-11: the three ottilie test profiles give `genbank`, the e2e snapshot is re-recorded on this route (§7), the pre-built route keeps the gate, a DAG-build test and two module cases. O.6, the launch form, done 2026-11-11: `genbank` is the one visible reference field, the pre-built fields are hidden and reachable as a Launchpad version pinned to `v1.1.0` (§6); the first Platform runs of this route reproduce the local contract test (RUNBOOK 2026-11-11). O.7, the user docs, done 2026-11-11: `docs/usage/prepare_reference.md` starts from the GenBank file, the pre-built route is its appendix. Not yet: `ottilie/v2` (O.8).** Opened 2026-10-29 from a question about why
+**Status: design agreed 2026-11-02; O.1 (the codon-table line in today's caches, §4.3) and O.2 (the two build tasks of §5.1, module-tested) done the same day; O.3, the wiring, done 2026-11-09: `--genbank` runs both tasks before alignment, fills upstream's `fasta` / `snpeff_cache` / `report_gff3` channels and `snpeff_db`, both routes at once or neither is a start-up error, `reference/<db>/` is published, the pre-built route gained the cache-vs-FASTA preflight row, the four verdict rows reach the input-checks table in a QC-only run (`tests/genbank_route.nf.test`). O.4, the output scripts, done 2026-11-09: the two cohort-table scripts take the reference's `.fai` and follow its order (the roman-numeral lists are gone), `generate_index.py` reads the manifest's `type` column for the multi-copy contigs and has no name list any more (§5.4, §5.6). O.5, the contract test, done 2026-11-11: the three ottilie test profiles give `genbank`, the e2e snapshot is re-recorded on this route (§7), the pre-built route keeps the gate, a DAG-build test and two module cases. O.6, the launch form, done 2026-11-11: `genbank` is the one visible reference field, the pre-built fields are hidden and reachable as a Launchpad version pinned to `v1.1.0` (§6); the first Platform runs of this route reproduce the local contract test (RUNBOOK 2026-11-11). O.7, the user docs, done 2026-11-11: `docs/usage/prepare_reference.md` starts from the GenBank file, the pre-built route is its appendix. O.8, the test data, done 2026-11-11: `ottilie/v2` on both blob accounts (a new cut from SRA with Mito in, about 30x parent and 60x evolved, pre-built files with the mitochondrial genetic code), every pin moved, the snapshot re-recorded on it (§7); `ottilie/v1` is frozen.** Opened 2026-10-29 from a question about why
 the pipeline takes FASTA + SnpEff cache where the legacy AMP v1 pipeline took a single GenBank; reviewed
 decision by decision on 2026-11-02 with the launch form and a future ALEdb registration in view. Every
 number here was measured with the pipeline's own snpEff image (`quay.io/biocontainers/snpeff:5.1--hdfd78af_2`)
@@ -268,8 +268,8 @@ which are the same cache; parent and per-genome config); `build_snpeff_cache.sh`
 appended after it, because a `codonTable` line in the build's `-c` replacement config triggers the
 `No such codon table` stop described above (the bins do not depend on the line: rebuilt with the variable,
 all four files equal the shipped cache). `04_validate/README.md` carries the provenance note; the only
-mitochondrial site in the pilot results, `Mito:53278`, is intergenic. The `ottilie/v1` blob caches wait
-for O.8, so cloud runs keep the standard code on Mito until then.
+mitochondrial site in the pilot results, `Mito:53278`, is intergenic. The `ottilie/v2` blob caches carry
+the line since 2026-11-11; the frozen `ottilie/v1` caches (read by the `v1.1.0` tag) keep the standard code on Mito.
 
 ### 4.4 Unit test to carry along
 
@@ -465,13 +465,21 @@ order for the index tables is a deferred item (§8).
   4-sample pilot on the pre-built route (`run_ottilie_pilot.sh`, 2026-11-09: no manifest, Mito graded against 1,
   see `PLAN_next_checklist.md` §O O.4 for what its index shows) plus a standalone render of the same bundle with
   a manifest typing Mito `mitochondrion` (Mito column *vs median*, legend names it).
-- **Test data `ottilie/v2`** on both accounts as the closing package (`08_upload_test_data.sh` and
-  `publish_test_data.sh` with `PREFIX=ottilie/v2`): the codon-table fix changes the full reference's cache,
-  which under §13 is a new data version; `v1` stays untouched for older clones and baselines. Baseline
-  2026-11-02: `az://aletest/ottilie/v1/` holds 56 blobs, the test GenBank among its four test-reference files;
-  the public `v1/SHA256SUMS` answers 200. The 23 files that pin `ottilie/v1` move in one commit; one Platform run
-  from the entry on `v2` is the acceptance check. Whether `v2` still ships pre-built cache directories is
-  decided then.
+- **Test data `ottilie/v2` (done 2026-11-11)** on both accounts (`08_upload_test_data.sh`,
+  `upload_pilot_data.sh` and `publish_test_data.sh`, which default to `ottilie/v2` and refuse `ottilie/v1`):
+  the codon-table fix changes the full reference's cache, which under §13 is a new data version, and Mito
+  enters the contract test. `v1` stays untouched for the `v1.1.0` tag and older baselines (56 private blobs,
+  61 public, before and after). `v2` ships the pre-built files too (FASTA, GFF3, both cache directories,
+  `snpeff_cache.tar.gz`), each cache with the `Mito` codon-table line: 59 private blobs, 64 public. The
+  test set itself is a new cut (SRA reads, five contigs, a seeded 0.67 of the pairs; depth chosen on the
+  SV junction calls, measured on four cuts; a truth gate before any upload):
+  `docs/benchmarking/ottilie_xenobiotic_ale/DATA_PROVENANCE.md`. What the contract test now sees of this
+  note's design: the *GenBank genetic code* row reads `Mito=3 (Yeast_Mitochondrial)`, the database's
+  `snpEff.config` carries `S288C_R64_test.Mito.codonTable : Yeast_Mitochondrial`, the protein check covers
+  the 19 mitochondrial CDS (1,965 CDS, Errors: 0), the manifest row is `mitochondrion`, transl_table 3, and
+  the index names Mito as multi-copy, graded against the cohort median. The pins moved in one commit with
+  the re-recorded snapshot; one Platform run from the entry on `v2` is the acceptance check (the entry's
+  parameters box must be updated together with the push).
 
 ## 8. Deferred, with the reason
 

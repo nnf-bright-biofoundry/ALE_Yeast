@@ -77,13 +77,13 @@ Results land in `output_ottilie_test/`; open `output_ottilie_test/mutation_repor
 > [Running the SnpEff cache from cloud storage](#running-the-snpeff-cache-from-cloud-storage).
 >
 > This doesn't reduce disk use: Nextflow copies each remote file once into
-> `<workdir>/stage-<session-uuid>/`, so the ~366 MB of inputs lands in the work dir instead of
+> `<workdir>/stage-<session-uuid>/`, so the ~278 MB of inputs lands in the work dir instead of
 > `data/ottilie/`. Clean up with `rm -rf work_ottilie_test_blob`; `nextflow clean` leaves `stage-*` behind.
 
 ### The test dataset
 
 2 samples (parent `NODRUG-GM2` + evolved `CBR110-15-R3a`) from *S. cerevisiae* S288C, subset to
-4 chromosomes (I, IV, VII, XV). Truth set: **4 SNVs + a chr I whole-chromosome duplication**
+4 chromosomes (I, IV, VII, XV) and the mitochondrial genome, at about 30x and 60x. Truth set: **4 SNVs + a chr I whole-chromosome duplication**
 (Ottilie et al., *Commun Biol* 5:128, 2022). The data lives under `data/ottilie/` (gitignored) and is
 described in
 [`docs/benchmarking/ottilie_xenobiotic_ale/DATA_PROVENANCE.md`](docs/benchmarking/ottilie_xenobiotic_ale/DATA_PROVENANCE.md).

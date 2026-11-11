@@ -14,8 +14,8 @@ For formal deliverables and acceptance criteria, see [statement_of_work.md](docs
 | **3 — Full cohort** | 355 clones + parents | Comprehensive benchmark | ~170 GB | Future |
 
 **Current focus (2026-08):** day-to-day development and release validation run on the **2-sample
-chr-subset test set** derived from the pilot (`01_data_retrieval/release/`, the `ottilie_test`
-profile); the **4-sample full-depth pilot** is staged on Azure (`az://aletest/ottilie/v1/`) and is
+test set** (five contigs, a read subsample) cut from two of the pilot's libraries (`01_data_retrieval/release/`, the `ottilie_test`
+profile); the **4-sample full-depth pilot** is staged on Azure (`az://aletest/ottilie/v2/`) and is
 the near-term target for cloud-scale runs. Tier 2 is pushed out accordingly and may be retired —
 its retrieval/selection scripts below remain functional but are not on the active path.
 

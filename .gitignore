@@ -148,6 +148,7 @@ null/
 # publish_test_data.sh scratch dir (both transient, both re-fetchable from the blob)
 .ottilie_ci_cache/
 .ottilie_publish/
+.ottilie_test_build/
 docs/igvreports/ottilie_4samples/
 docs/igvreports/demo/
 

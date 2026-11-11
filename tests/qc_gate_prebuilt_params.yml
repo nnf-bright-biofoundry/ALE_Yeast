@@ -7,7 +7,7 @@
 #       -params-file tests/qc_gate_prebuilt_params.yml --outdir <dir>             a full run on this route
 #
 # The paths are repo-relative: launch from the repo root (the gate script does so itself).
-# The database is Ensembl's R64-1-1.105 (17 contigs; the test FASTA holds 4 of them) and the gene
+# The database is Ensembl's R64-1-1.105 (17 contigs; the test FASTA holds 5 of them) and the gene
 # track is the full-genome GFF3, exactly what the contract test ran on before it moved.
 genbank: null
 fasta: data/ottilie/S288C_reference_test/S288C_R64_test.fa

@@ -263,14 +263,19 @@ non-obvious rules, each learned by running it — full detail in the same doc:
 
 ### Key Files and Locations
 
-- **Test data (ottilie)** — the release test set: 2 samples (parent + evolved), 4 chromosomes; truth =
-  4 SNVs + a chr I duplication. Lives under `data/ottilie/` (gitignored). Profile:
+- **Test data (ottilie)** — the release test set: 2 samples (parent + evolved), chromosomes I, IV, VII, XV
+  and Mito; truth = 4 SNVs + a chr I duplication. **Version `ottilie/v2` since 2026-11-11**: cut from the SRA reads
+  (never from a pipeline CRAM, which holds trimmed reads), a seeded 0.67 of the pairs of both samples (about 30x
+  parent, 60x evolved: the SV junction calls set the floor, the evolved library needs twice the depth), 267 MB.
+  `ottilie/v1` (full depth, no Mito, caches without the Mito genetic code) is frozen on both accounts for the
+  `v1.1.0` tag and every baseline listed above, which are therefore not comparable with a run of `main`. A cut is
+  published only with a truth-gate stamp (`check_test_data_truth.py`). Lives under `data/ottilie/` (gitignored). Profile:
   [`conf/test/ottilie_test.config`](conf/test/ottilie_test.config) → run
   `nextflow run main.nf -profile ottilie_test,azureD4as,docker`. Generate locally with
   `docs/benchmarking/ottilie_xenobiotic_ale/01_data_retrieval/release/generate_test_data.sh`; on a fresh machine
   fetch from the public blob (no creds) with `download_test_data.sh`. Full lineage/prep:
   [`docs/benchmarking/ottilie_xenobiotic_ale/DATA_PROVENANCE.md`](docs/benchmarking/ottilie_xenobiotic_ale/DATA_PROVENANCE.md).
-- **Launchers**: `bin/test_ottilie.sh` (minimal 2-sample test) · `bin/test_ottilie_blob.sh` (same test, `ottilie_test_ci` profile — inputs streamed from the public blob, **no local `data/ottilie/`** and, since 2026-11-11, no pre-launch step: the reference is the one test GenBank, a single file; a pre-built `snpeff_cache` is a directory and cannot come from an https URL, which is why the script untarred `snpeff_cache.tar.gz` before) · `docs/benchmarking/ottilie_xenobiotic_ale/03_pipeline/run_ottilie_pilot.sh` (full-depth **4-sample** run, same S288C data). The 2-sample test set is a **chromosome subset** (chr I/IV/VII/XV) of **2 of** the pilot's 4 `--save_mapped` CRAMs, extracted by `generate_test_data.sh` — not a read-subsample. Both use `-profile azureD4as,docker`.
+- **Launchers**: `bin/test_ottilie.sh` (minimal 2-sample test) · `bin/test_ottilie_blob.sh` (same test, `ottilie_test_ci` profile — inputs streamed from the public blob, **no local `data/ottilie/`** and, since 2026-11-11, no pre-launch step: the reference is the one test GenBank, a single file; a pre-built `snpeff_cache` is a directory and cannot come from an https URL, which is why the script untarred `snpeff_cache.tar.gz` before) · `docs/benchmarking/ottilie_xenobiotic_ale/03_pipeline/run_ottilie_pilot.sh` (full-depth **4-sample** run, same S288C data). The 2-sample test set is a **contig subset and a read subsample** of 2 of the pilot's 4 libraries (same S288C data), cut by `generate_test_data.sh` from the SRA FASTQs. Both use `-profile azureD4as,docker`.
 - **Resources config**: [`conf/azured4as.config`](conf/azured4as.config) (the `azureD4as` local-VM profile;
   use `-profile azureD4as`, no `-c` needed). See [`docs/dev-practices/compute_resources.md`](docs/dev-practices/compute_resources.md).
 - **Reference from one GenBank (`--genbank`, wired 2026-11-09, `PLAN_next_checklist.md` §O):** the pipeline
@@ -278,7 +283,7 @@ non-obvious rules, each learned by running it — full detail in the same doc:
   manifest from the one file before alignment (`GENBANK_REFERENCE` + `SNPEFF_BUILD`, both in a QC-only run),
   publishes `reference/<db>/` always, and errors when `--genbank` is given with `fasta`/`snpeff_cache`/`report_gff3`
   or when neither route is given. Contig names = LOCUS, everywhere. **Since 2026-11-11 the three ottilie test
-  profiles (`ottilie_test`, `_ci`, `_az`) and the contract test take this route** (`genbank` = the 4-chromosome
+  profiles (`ottilie_test`, `_ci`, `_az`) and the contract test take this route** (`genbank` = the 5-contig
   test GenBank, database `S288C_R64_test`; `conf/test/ottilie_common.config` names no `snpeff_db` any more);
   `ottilie_pilot_az` and `bin/test_ottilie_azure_batch.sh` stay on the pre-built files. **Since 2026-11-11 the
   launch form shows `genbank` as its only reference field** (lowercase `.gb|.gbk|.gbff|.genbank[.gz]`, else a
@@ -297,7 +302,7 @@ non-obvious rules, each learned by running it — full detail in the same doc:
   The cache's `snpEff.config` carries the **genetic code per contig** (`<db>.<contig>.codonTable : <Table>`,
   read at annotation time; snpEff ignores `/transl_table`): the shipped `R64-1-1.105` caches carry
   `Mito : Yeast_Mitochondrial` since 2026-11-02 (`CODON_TABLES=` in the build script, test
-  `tests/snpeff_codon_table.nf.test`); the `ottilie/v1` blob copies follow with `ottilie/v2` (`genbank_reference_input.md` §7).
+  `tests/snpeff_codon_table.nf.test`); the `ottilie/v2` blob copies carry it too since 2026-11-11, the frozen `ottilie/v1` copies never will (`genbank_reference_input.md` §7).
 - **Fork base**: nf-core/sarek 3.5.1 — the fork tree lives at the **repo root** (`main.nf`, `conf/`,
   `workflows/`, `modules/`, `subworkflows/`); consult the upstream 3.5.1 docs for base behavior.
   For diffing against pristine 3.5.1, fetch it per `docs/dev-practices/SAREK_MODIFICATIONS.md` (`nf-core pipelines
@@ -400,7 +405,7 @@ Verdicts in a MultiQC table + `reports/preflight/`; a console line only on ERROR
 zero-lines rule holds (`tests/preflight_reference.nf.test`, 10 cases). Since 2026-11-09 a second check, the
 FASTA's contig names against the pre-built snpEff database's (read from `snpEffectPredictor.bin`, compared as
 snpEff looks them up): ERROR on no shared name or a wrong `snpeff_db`, WARN on FASTA contigs the database lacks,
-OK with a note on the subset case (the pre-built test files: 4 of 17), SKIPPED on the GenBank route (the test profiles' route since 2026-11-11; the identifiers row is OK with a note for a lab-made file without versioned accessions, never a WARN), whose four rows (identifiers,
+OK with a note on the subset case (the pre-built test files: 5 of 17), SKIPPED on the GenBank route (the test profiles' route since 2026-11-11; the identifiers row is OK with a note for a lab-made file without versioned accessions, never a WARN), whose four rows (identifiers,
 genetic code, protein check, contig names) come from its two build tasks instead. The other candidates are roadmap rows.
 Since 2026-09-29 **every** check's verdict (OK/WARN; an ERROR stops the run before any report) is a
 row of one *yAMP input checks* table at the top of all three MultiQC reports — the DAG-build rows

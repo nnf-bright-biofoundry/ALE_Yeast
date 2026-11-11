@@ -7,6 +7,8 @@ nextflow_pipeline {
 
     // Run with:  nf-test test -c tests/nf-test-ottilie.config tests/ottilie_e2e.nf.test
     // Profile (ottilie_test,docker) + resourceLimits come from tests/nf-test-ottilie.config.
+    // Test data: ottilie/v2 (2 samples; chromosomes I, IV, VII, XV and Mito; a seeded 0.67 of the read
+    // pairs, about 30x parent and 60x evolved; DATA_PROVENANCE.md).
     // Tools exercised (from ottilie_test.config): snpeff, cnvkit, tiddit, manta, haplotypecaller
     //   + the reference given as ONE GenBank (the profile's `genbank`): GENBANK_REFERENCE and
     //     SNPEFF_BUILD derive the FASTA, the snpEff database and the report's gene track before
@@ -145,8 +147,13 @@ nextflow_pipeline {
                 { assert input_checks.findAll { it[1] != 'OK' }.collect { it[0..1] } == [['snpEff cache vs FASTA contig names', 'SKIPPED']] },
                 // no console line from any check on the test set (its GenBank is a lab-made file, VERSION == LOCUS)
                 { assert !workflow.stdout.any { it.contains('[yAMP preflight]') } },
-                // the index page says which rule coloured the Whole chromosomes table on this reference
-                { assert path("$outputDir/mutation_reports/index.html").text.contains('every contig is coloured against 1 (the GenBank reference marks no contig as an organelle or a plasmid)') },
+                // the index page says which rule coloured the Whole chromosomes table on this reference: the test
+                // GenBank's Mito record carries /organelle="mitochondrion", so the contig manifest types it and the
+                // page grades it against the cohort median
+                { assert path("$outputDir/mutation_reports/index.html").text.contains('Mito: multi-copy (reference manifest), coloured against the cohort median, not 1') },
+                // the mitochondrial genetic code reached the build: the manifest row and the input-checks row
+                { assert path("$outputDir/reference/S288C_R64_test/contig_manifest.csv").readLines().last().startsWith('Mito,') },
+                { assert input_checks.find { it[0] == 'GenBank genetic code' }[2].contains('Mito=3 (Yeast_Mitochondrial)') },
 
                 // Regression on task count + the software-versions manifest (Nextflow version stripped so
                 // the snapshot is portable across Nextflow releases), plus the content layers above.

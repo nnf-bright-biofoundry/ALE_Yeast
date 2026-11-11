@@ -27,7 +27,7 @@ nextflow_process {
     // pre-built snpEff database's (inputs 3 and 4: the --snpeff_cache directory and --snpeff_db). The
     // database names are read from snpEffectPredictor.bin (gzipped text, one CHROMOSOME line per
     // contig); the FASTA names are simplified the way snpEff looks them up. Cases: the shipped test
-    // cache against the 4-chromosome test FASTA (OK with a note: the SUBSET case, 13 extra contigs;
+    // cache against the 5-contig test FASTA (OK with a note: the SUBSET case, 12 extra contigs;
     // needs data/ottilie/), and the 25 KB Mito-only fixture cache of the codon-table test against
     // mito.fa (OK, exact), mito_chrz.fa (WARN: chrZ not in the database), ref.fa (ERROR: no shared
     // name) and a wrong database name (ERROR: no such directory). [] skips the check (SKIPPED row).
@@ -139,7 +139,7 @@ nextflow_process {
         }
     }
 
-    test("shipped pre-built test cache vs the 4-chromosome test FASTA: OK row noting the 13 extra contigs, nothing on the console") {
+    test("shipped pre-built test cache vs the 5-contig test FASTA: OK row noting the 12 extra contigs, nothing on the console") {
         when {
             params { outdir = "$outputDir" }
             process {
@@ -156,7 +156,7 @@ nextflow_process {
             assertAll(
                 { assert process.success },
                 { assert table.size() == 3 },
-                { assert table[2] == 'snpEff cache vs FASTA contig names\tOK\tall 4 contig name(s) of S288C_R64_test.fa are chromosomes of snpEff database R64-1-1.105; the database has 13 more (II, III, IX, Mito, V, VI, VIII, X, XI, XII, …), as expected for a chromosome-subset reference' },
+                { assert table[2] == 'snpEff cache vs FASTA contig names\tOK\tall 5 contig name(s) of S288C_R64_test.fa are chromosomes of snpEff database R64-1-1.105; the database has 12 more (II, III, IX, V, VI, VIII, X, XI, XII, XIII, …), as expected for a chromosome-subset reference' },
                 { assert verdicts(process.stdout) == [] }
             )
         }
@@ -288,8 +288,8 @@ nextflow_process {
             def table = rows(process.out.mqc[0])
             assertAll(
                 { assert process.success },
-                { assert table[1] == 'FASTA vs GFF3 contig names\tOK\tall 4 contig name(s) of S288C_R64_test.gff3 are contigs of S288C_R64_test.fa (4 contigs)' },
-                { assert table[2] == 'snpEff cache vs FASTA contig names\tOK\tall 4 contig name(s) of S288C_R64_test.fa are the chromosomes of snpEff database S288C_R64_test (4)' },
+                { assert table[1] == 'FASTA vs GFF3 contig names\tOK\tall 5 contig name(s) of S288C_R64_test.gff3 are contigs of S288C_R64_test.fa (5 contigs)' },
+                { assert table[2] == 'snpEff cache vs FASTA contig names\tOK\tall 5 contig name(s) of S288C_R64_test.fa are the chromosomes of snpEff database S288C_R64_test (5)' },
                 { assert verdicts(process.stdout) == [] },
             )
         }

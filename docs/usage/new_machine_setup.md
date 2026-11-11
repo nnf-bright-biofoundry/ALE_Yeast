@@ -21,7 +21,7 @@ nothing else has to be installed.
 | **OS** | Linux **x86_64**. Apple Silicon / ARM is **not supported**: GATK and MultiQC tasks stall or hang. |
 | **CPU / RAM** | 4 vCPU / 16 GB is the validated dev size. Less RAM works if you lower the clamp (step 4), but tasks run less concurrently. |
 | **Disk** | **~30 GB free**, and check *which* filesystem (see below). |
-| **Network** | Needed for: git clone, conda, the test-data download (~400 MB), the Nextflow engine self-fetch, and container pulls on first run. |
+| **Network** | Needed for: git clone, conda, the test-data download (~330 MB), the Nextflow engine self-fetch, and container pulls on first run. |
 | **Privileges** | `sudo` for installing Docker. |
 
 ### Disk, in detail
@@ -32,7 +32,7 @@ The container images dominate, and they land somewhere different from everything
 |---|---|---|
 | **Container images** | **~16 GB** (26 images) | `/var/lib/docker`, *not* your repo |
 | Work dir (`work/`) | ~8 GB | launch directory, or wherever `-w` points |
-| Test data | ~400 MB | `data/ottilie/` |
+| Test data | ~450 MB | `data/ottilie/` |
 | Output | ~200 MB | `--outdir` |
 
 Every tool the pipeline runs is a container, so a first run pulls the lot. Later runs reuse them and
@@ -171,7 +171,7 @@ Public Azure Blob, no credentials, no `az login`:
 bash docs/benchmarking/ottilie_xenobiotic_ale/01_data_retrieval/release/download_test_data.sh
 ```
 
-Downloads ~400 MB into `data/ottilie/` (gitignored), verifies a SHA256 checksum, and **writes
+Downloads ~330 MB into `data/ottilie/` (gitignored), verifies a SHA256 checksum, and **writes
 `data/ottilie/samplesheet_test.csv` with this machine's absolute paths**.
 
 ⚠️ **Never copy that samplesheet between machines.** It contains machine-local absolute FASTQ paths;
@@ -185,7 +185,7 @@ Use the download above when you want the data on disk (nf-test, repeat runs, off
 streaming script for a one-shot check that the install works.
 
 > Streaming doesn't save disk: Nextflow downloads each remote file once into
-> `<workdir>/stage-<session-uuid>/` (~366 MB here), so the inputs move *into* the work dir rather than
+> `<workdir>/stage-<session-uuid>/` (~278 MB here), so the inputs move *into* the work dir rather than
 > disappearing. `rm -rf work_ottilie_test_blob` reclaims all of it; **`nextflow clean` does not**: it
 > skips `stage-*` dirs. Full breakdown:
 > [`DATA_PROVENANCE.md`](../benchmarking/ottilie_xenobiotic_ale/DATA_PROVENANCE.md).

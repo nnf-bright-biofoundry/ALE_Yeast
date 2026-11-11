@@ -106,6 +106,16 @@ Full project history lives in `git log` and `CHANGELOG.md`; resolved items are s
 
 ## CNV — contig-level copy number and the mitochondrial genome
 
+- **[low] TIDDIT's small calls on the mitochondrial contig fill the SV table (seen 2026-11-11).** With Mito
+  in the test set (`ottilie/v2`), 33 of the 45 PASS rows of `sv_cohort_matrix_union_pass.csv` are on Mito:
+  31 TIDDIT calls in the parent only (deletions of 73 to 450 bp and one inversion, on a 17 % GC contig at
+  300x), one whole-contig TIDDIT DUP in the evolved clone (the circular origin) and one Manta inversion in
+  the parent. *Measured*: the counts, on the contract-test output; the full-genome pilot of 2026-11-09
+  shows the same (31 of its 53 PASS rows on Mito, 29 of them carried by the parent). *Not measured*: whether
+  any is real (heteroplasmic deletions exist in yeast mtDNA).
+  Options to review: leave as is and say so in the report's Methods, a per-contig note in the SV section
+  for contigs the manifest types as an organelle, or a depth-scaled TIDDIT threshold. No change made.
+
 - **[done 2026-08-27] Surface per-contig copy number in the report** — `BUILD_CONTIG_CN` +
   `bin/contig_copy_number.py` → `data/contig_copy_number.csv` (ratio = TIDDIT Ploidy ÷ samplesheet n)
   and a "Contig Copy Number" table + Methods entry in `index.html`. Original note: TIDDIT
@@ -608,7 +618,7 @@ Full project history lives in `git log` and `CHANGELOG.md`; resolved items are s
 
 Public since 2026-09-04, so someone registering the repo on their own Seqera workspace, AWS Batch or
 HPC must be able to run the contract test with no credentials of ours and no pre-launch step. The
-data side is solved: the 2-sample set (402 MB) is on the public account `aletestdatapublic` (anonymous
+data side is solved: the 2-sample set (402 MB as `ottilie/v1`, 308 MB as `ottilie/v2`) is on the public account `aletestdatapublic` (anonymous
 read, SHA256SUMS, per-file https samplesheet). One blocker remains: `snpeff_cache` is a *directory*
 param and Nextflow's http provider cannot stage a directory, so `ottilie_test_ci` relies on a local
 untar by `bin/test_ottilie_blob.sh`, which a Platform head job never runs (the run aborts in
@@ -700,8 +710,9 @@ pipeline; none is about the transport.
   ignored; the shipped caches got their `codonTable` line on 2026-11-02, §O.1, test `tests/snpeff_codon_table.nf.test`); design note `genbank_reference_input.md`, task `PLAN_next_checklist.md` §O. **Decided 2026-11-02**:
   LOCUS is the contig identifier (breseq and ALEdb already use it), no display alias, the builder rewrites
   VERSION in the copy it hands snpEff, a contig manifest is always published; the 17 decisions are §0 of the note.
-- **[med] Freeze and mirror the published test data.** `publish_test_data.sh` republishes `ottilie/v1`
-  in place; bump the prefix on any change (SHA256SUMS already covers it). The host is one institution's
+- **[med] Freeze and mirror the published test data.** `publish_test_data.sh` republishes the current
+  prefix (`ottilie/v2` since 2026-11-11) in place; bump the prefix on any change (SHA256SUMS already covers
+  it). `ottilie/v1` is frozen since that date: the three upload scripts refuse it. The host is one institution's
   account with 7-day soft delete — add a DOI'd mirror (Zenodo, free, versioned) and document
   `OTTILIE_BLOB_BASE` as the switch. Egress per external run is ~0.4 GB, negligible.
 - **[low] `--download_cache` is inherited but dead on snpEff 5.1** (its built-in host was deprecated

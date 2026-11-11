@@ -37,15 +37,18 @@
 # shared-key auth (AUTH=key) — works with control-plane access + the account's allowSharedKeyAccess=true,
 # no data-plane RBAC role needed. Set AUTH=login to use AAD instead (needs a Storage Blob Data role).
 #
-# ⚠️ ottilie/v1 IS A ROLLING PREFIX — re-running this republishes it IN PLACE, and every consumer
+# ⚠️ ottilie/v2 IS A ROLLING PREFIX — re-running this republishes it IN PLACE, and every consumer
 #    picks the change up with no repointing. That is deliberate: an update parked under a new prefix
 #    reaches nobody until something is edited to point at it. Additive changes (new files, a bigger
 #    bundle) are safe. REMOVING or RENAMING a published file is not — bump PREFIX for that.
+#    ottilie/v1 (full-depth reads cut from untrimmed CRAMs, no Mito, caches without the Mito codon
+#    table) is FROZEN since v2 exists: the v1.1.0 tag and its Launchpad version read it. This
+#    script refuses to write there.
 #
 # Usage (from repo root):
 #   bash docs/benchmarking/ottilie_xenobiotic_ale/01_data_retrieval/release/publish_test_data.sh
 # Override target (a breaking change needing a new version, or a different host):
-#   ACCOUNT=aletestdatapublic CONTAINER=releases PREFIX=ottilie/v2  bash .../publish_test_data.sh
+#   ACCOUNT=aletestdatapublic CONTAINER=releases PREFIX=ottilie/v3  bash .../publish_test_data.sh
 # Build everything locally and upload NOTHING (no az needed; stage dir is kept for inspection):
 #   DRY_RUN=1 bash .../publish_test_data.sh
 
@@ -57,9 +60,9 @@ SRC="$REPO_ROOT/data/ottilie"
 
 ACCOUNT="${ACCOUNT:-aletestdatapublic}"
 CONTAINER="${CONTAINER:-releases}"
-PREFIX="${PREFIX:-ottilie/v1}"                  # rolling: updated in place (see Phase 0). Bump for a breaking change.
+PREFIX="${PREFIX:-ottilie/v2}"                  # rolling: updated in place (see Phase 0). Bump for a breaking change.
 AUTH="${AUTH:-key}"                             # 'key' = shared-key (default, needs no data-plane role); 'login' = AAD
-STAGE="${STAGE:-$REPO_ROOT/.ottilie_publish}"   # small: tarballs + SHA + url-samplesheet only (not the 402 MB copied)
+STAGE="${STAGE:-$REPO_ROOT/.ottilie_publish}"   # small: tarballs + SHA + url-samplesheet only (the data itself is not copied)
 DRY_RUN="${DRY_RUN:-}"                          # set to build + verify locally without az or any upload
 PILOT_SCRIPT="$SCRIPT_DIR/../fastq/download_pilot_fastq.sh"
 BASE_URL="https://${ACCOUNT}.blob.core.windows.net/${CONTAINER}/${PREFIX}"
@@ -68,10 +71,34 @@ BASE_URL="https://${ACCOUNT}.blob.core.windows.net/${CONTAINER}/${PREFIX}"
 # Phase 0 — preflight (data present + container provisioned)
 # ---------------------------------------------------------------------------
 [[ -n "$DRY_RUN" ]] || command -v az >/dev/null || { echo "ERROR: az CLI not found (az login required)." >&2; exit 1; }
+[[ "$PREFIX" != "ottilie/v1" ]] || {
+    echo "ERROR: ottilie/v1 is frozen (the v1.1.0 tag and its Launchpad version read it). Publish to ottilie/v2 or later." >&2
+    exit 1; }
 [[ -d "$SRC/fastq_test" && -d "$SRC/S288C_reference_test" && -f "$SRC/S288C_reference/S288C_R64.gff3" ]] || {
     echo "ERROR: data/ottilie/ not populated. Run generate_test_data.sh (or download_test_data.sh) first." >&2
     exit 1
 }
+# The cut must have passed the truth gate (check_test_data_truth.py on a pipeline run of exactly
+# these FASTQs): the stamp lists the md5 of every FASTQ it was written for.
+CUT="$SRC/fastq_test/CUT_PARAMETERS.tsv"; GATE="$SRC/fastq_test/TRUTH_GATE.txt"
+[[ -f "$CUT" ]] || { echo "ERROR: $CUT missing — fastq_test/ was not written by generate_test_data.sh (version 2)." >&2; exit 1; }
+[[ -f "$GATE" ]] || {
+    echo "ERROR: $GATE missing — this cut has not passed the truth gate." >&2
+    echo "       Run the pipeline on it, then: python $SCRIPT_DIR/check_test_data_truth.py <outdir>" >&2
+    exit 1; }
+N_FASTQ=0
+for f in "$SRC"/fastq_test/*.fastq.gz; do
+    N_FASTQ=$((N_FASTQ + 1))
+    grep -qxF "md5	$(md5sum < "$f" | cut -d' ' -f1)	${f##*/}" "$GATE" || {
+        echo "ERROR: ${f##*/} is not the file the truth gate was passed on (md5 not in TRUTH_GATE.txt)." >&2; exit 1; }
+done
+[[ "$N_FASTQ" -eq "$(grep -c '^md5' "$GATE")" ]] || { echo "ERROR: fastq_test/ holds $N_FASTQ FASTQs, the truth gate stamp lists $(grep -c '^md5' "$GATE")." >&2; exit 1; }
+echo "Truth gate stamp matches the $N_FASTQ FASTQs in fastq_test/."
+# The pre-built snpEff databases must carry the mitochondrial genetic code (v1's did not).
+for d in S288C_reference S288C_reference_test; do
+    grep -q 'Mito.codonTable' "$SRC/$d/snpeff_cache/R64-1-1.105/snpEff.config" || {
+        echo "ERROR: $d/snpeff_cache has no Mito codonTable line in R64-1-1.105/snpEff.config." >&2; exit 1; }
+done
 # The FULL reference ships too, so both references are ready to use from one download.
 for f in S288C_R64.fa S288C_R64_ensembl_chrnames.gb; do
     [[ -f "$SRC/S288C_reference/$f" ]] || {
@@ -107,7 +134,7 @@ if [[ "$EXISTS" != "true" ]]; then
     exit 2
 fi
 
-# THE PREFIX IS ROLLING, NOT IMMUTABLE: ottilie/v1 is updated in place, so every consumer picks up
+# THE PREFIX IS ROLLING, NOT IMMUTABLE: the current version's prefix is updated in place, so every consumer picks up
 # a change with no repointing. That is the whole reason the improvements land here rather than under
 # a new version nothing references. Warn — do not block. A prompt that fires on every single publish
 # gets bypassed reflexively, which is worse than no check at all.
@@ -119,7 +146,7 @@ fi
 #                         republished in the same run, so download_test_data.sh stays consistent —
 #                         but anything holding an OLD hash out-of-band will now mismatch.
 #
-# ⚠️ BUMP THE PREFIX (PREFIX=ottilie/v2) for a change that would BREAK a consumer — removing or
+# ⚠️ BUMP THE PREFIX (PREFIX=ottilie/v3) for a change that would BREAK a consumer — removing or
 #    renaming a published file, or changing the content of one that already exists. Growing the set
 #    is additive and safe; taking things away is not.
 [[ -n "$DRY_RUN" ]] || N_EXISTING="$(az storage blob list --account-name "$ACCOUNT" --auth-mode "$AUTH" \
@@ -131,7 +158,7 @@ if [[ "${N_EXISTING:-0}" -gt 0 ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Phase 1 — build tarballs, checksums, URL samplesheet (no 402 MB copy)
+# Phase 1 — build tarballs, checksums, URL samplesheet (the data itself is not copied)
 # ---------------------------------------------------------------------------
 rm -rf "$STAGE"; mkdir -p "$STAGE"
 
@@ -141,7 +168,7 @@ rm -rf "$STAGE"; mkdir -p "$STAGE"
 # .fai/.dict/BWA indices on a dev machine, and those are deliberately NOT published (Sarek builds
 # them in-run; shipping them would tempt someone to pass them and change the task graph).
 PUBLISH_PATHS=(
-    fastq_test                                      # 2 samples, chromosomes I/IV/VII/XV
+    fastq_test                                      # 2 samples, chromosomes I/IV/VII/XV + Mito, a seeded fraction; + cut record and truth-gate stamp
     S288C_reference_test                            # slimmed reference — pairs with those reads
     S288C_reference/S288C_R64.gff3                  # shared by both references
     S288C_reference/S288C_R64.fa                    # ↓ full reference — all 16 chromosomes + Mito
@@ -215,12 +242,14 @@ for f in "$STAGE"/*.tar.gz; do
 done
 
 echo "Writing blob-URL samplesheet (for Seqera per-file staging) ..."
+# File names come from the cut record (they carry the seed and the fraction), in its sample order.
 FQ="$BASE_URL/files/fastq_test"
-cat > "$STAGE/samplesheet_test_blob.csv" <<CSV
-experiment,sample,status,clonal_or_population,ploidy,sex,lane,fastq_1,fastq_2
-Ottilie_test,NODRUG-GM2,0,clonal,1,XX,L001,$FQ/NODRUG-GM2_chrI_IV_VII_XV_R1.fastq.gz,$FQ/NODRUG-GM2_chrI_IV_VII_XV_R2.fastq.gz
-Ottilie_test,CBR110-15-R3a,0,clonal,1,XX,L001,$FQ/CBR110-15-R3a_chrI_IV_VII_XV_R1.fastq.gz,$FQ/CBR110-15-R3a_chrI_IV_VII_XV_R2.fastq.gz
-CSV
+{
+    echo "experiment,sample,status,clonal_or_population,ploidy,sex,lane,fastq_1,fastq_2"
+    awk -F'\t' -v fq="$FQ" 'NR>1 {print "Ottilie_test," $1 ",0,clonal,1,XX,L001," fq "/" $7 "," fq "/" $9}' "$CUT"
+} > "$STAGE/samplesheet_test_blob.csv"
+[[ "$(wc -l < "$STAGE/samplesheet_test_blob.csv")" -eq 3 ]] || { echo "ERROR: the blob samplesheet does not hold 2 samples." >&2; exit 1; }
+FIRST_FASTQ="$(awk -F'\t' 'NR==2 {print $7}' "$CUT")"
 
 # ---------------------------------------------------------------------------
 # Phase 2 — upload BOTH shapes under the versioned prefix
@@ -268,10 +297,11 @@ VFAIL=0
 for obj in SHA256SUMS MD5SUMS README.md ottilie_test_data.tar.gz \
            ottilie_test_data.tar.gz.md5 download_pilot_fastq.sh \
            files/pilot_truth_set.csv files/sample_name_dictionary.csv \
-           files/fastq_test/NODRUG-GM2_chrI_IV_VII_XV_R1.fastq.gz.md5 \
+           "files/fastq_test/$FIRST_FASTQ.md5" files/fastq_test/CUT_PARAMETERS.tsv files/fastq_test/TRUTH_GATE.txt \
            files/S288C_reference/S288C_R64.fa \
            files/S288C_reference/chromosomes/Mito.fa \
-           files/S288C_reference_test/S288C_R64_test.fa; do
+           files/S288C_reference_test/S288C_R64_test.fa \
+           files/S288C_reference_test/S288C_R64_test.gb; do
     if curl -fsSL -o /dev/null "$BASE_URL/$obj"; then
         echo "  OK      $obj"
     else

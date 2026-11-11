@@ -30,10 +30,10 @@
 # run in one go. After a QC-only run: Resume it with the box unticked
 # (docs/usage/qc_first_run.md).
 
-genbank: "az://aletest/ottilie/v1/S288C_reference_test/S288C_R64_test.gb"
+genbank: "az://aletest/ottilie/v2/S288C_reference_test/S288C_R64_test.gb"
 genome: null
 igenomes_ignore: true
-input: "az://aletest/ottilie/v1/samplesheet_test_az.csv"
+input: "az://aletest/ottilie/v2/samplesheet_test_az.csv"
 joint_germline: true
 seqera_workspace_url: "https://cloud.seqera.io/orgs/DTU-Biosustain/workspaces/RECON-ALE"
 skip_tools: "baserecalibrator"

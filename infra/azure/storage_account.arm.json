@@ -2,7 +2,7 @@
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "metadata": {
-    "description": "Dedicated Azure Storage account + public container for hosting release / test-data artifacts behind stable PUBLIC (no-SAS) URLs. Isolated from the 'aledata' account so enabling anonymous blob access does not widen the exposure of real research data. Content is public-derived (e.g. PRJNA590203 SRA + public S288C reference), so world-readable is acceptable; public access is for zero-credential fetch, not necessity. The ottilie test-data lives under the 'ottilie/v1/' prefix; consumed by docs/benchmarking/ottilie_xenobiotic_ale/01_data_retrieval/release/publish_test_data.sh."
+    "description": "Dedicated Azure Storage account + public container for hosting release / test-data artifacts behind stable PUBLIC (no-SAS) URLs. Isolated from the 'aledata' account so enabling anonymous blob access does not widen the exposure of real research data. Content is public-derived (e.g. PRJNA590203 SRA + public S288C reference), so world-readable is acceptable; public access is for zero-credential fetch, not necessity. The ottilie test-data lives under the 'ottilie/v2/' prefix; consumed by docs/benchmarking/ottilie_xenobiotic_ale/01_data_retrieval/release/publish_test_data.sh."
   },
   "parameters": {
     "storageAccountName": {
@@ -149,7 +149,7 @@
     },
     "ottilieTestDataBaseUrl": {
       "type": "string",
-      "value": "[format('{0}{1}/ottilie/v1', reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2025-06-01').primaryEndpoints.blob, parameters('containerName'))]"
+      "value": "[format('{0}{1}/ottilie/v2', reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2025-06-01').primaryEndpoints.blob, parameters('containerName'))]"
     }
   }
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Ottilie test, blob edition: same 2 samples (NODRUG-GM2 + CBR110-15-R3a) / 4 chromosomes
-# (I, IV, VII, XV) as bin/test_ottilie.sh, but every input is streamed from the PUBLIC
+# Ottilie test, blob edition: same 2 samples (NODRUG-GM2 + CBR110-15-R3a) / 5 contigs
+# (I, IV, VII, XV, Mito) as bin/test_ottilie.sh, but every input is streamed from the PUBLIC
 # Azure Blob (no credentials, no SAS, no populated data/ottilie/).
 # Uses the ottilie_test_ci profile (conf/test/ottilie_test_ci.config).
 # Truth variants: 4 SNVs + chr I whole-chromosome duplication in CBR110-15-R3a
@@ -15,7 +15,7 @@
 #
 # STORAGE / CLEANUP — streaming does NOT mean "no local copy". Nextflow downloads each remote
 # file ONCE per session into <workdir>/stage-<session-uuid>/ and symlinks it into every task dir
-# (~366 MB for this test). Two consequences:
+# (~278 MB for this test). Two consequences:
 #   * `-resume` (passed below) reuses that stage dir. A run WITHOUT -resume gets a new session id
 #     → a second full stage-* copy alongside the first. Never drop -resume when reusing the work dir.
 #   * `nextflow clean` removes task dirs but NOT stage-* dirs (verified) — so cleaning up means
@@ -31,7 +31,7 @@ set -euo pipefail
 
 pipeline_folder="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-BLOB_BASE="${OTTILIE_BLOB_BASE:-https://aletestdatapublic.blob.core.windows.net/releases/ottilie/v1}"
+BLOB_BASE="${OTTILIE_BLOB_BASE:-https://aletestdatapublic.blob.core.windows.net/releases/ottilie/v2}"
 
 export NXF_VER=25.10.4
 export OTTILIE_BLOB_BASE="$BLOB_BASE"

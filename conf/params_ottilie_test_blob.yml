@@ -1,6 +1,6 @@
 # Ottilie contract test — all inputs on Azure Blob (az://), for Azure Batch / Seqera runs.
 # Use with:  nextflow run main.nf -profile docker -c conf/azure_batch.config -params-file conf/params_ottilie_test_blob.yml
-input: "az://aletest/ottilie/v1/samplesheet_test_az.csv"
+input: "az://aletest/ottilie/v2/samplesheet_test_az.csv"
 
 # Output directory — a SAFETY NET, not the value you should run with.
 #
@@ -26,14 +26,14 @@ input: "az://aletest/ottilie/v1/samplesheet_test_az.csv"
 # verified local-head-job baseline that cloud runs are compared against.
 outdir: "az://aletest/seqera-runs/2026-08-06-01"
 
-# Reference — 4-chromosome subset of S288C R64-1-1
+# Reference — 5-contig subset of S288C R64-1-1 (I, IV, VII, XV, Mito)
 genome: null
 igenomes_ignore: true
-fasta: "az://aletest/ottilie/v1/S288C_reference_test/S288C_R64_test.fa"
+fasta: "az://aletest/ottilie/v2/S288C_reference_test/S288C_R64_test.fa"
 
 # Annotation — snpeff_cache is a DIRECTORY param; az:// staging verified working
 snpeff_db: "R64-1-1.105"
-snpeff_cache: "az://aletest/ottilie/v1/S288C_reference_test/snpeff_cache"
+snpeff_cache: "az://aletest/ottilie/v2/S288C_reference_test/snpeff_cache"
 
 # Tools
 tools: "snpeff,cnvkit,tiddit,manta,haplotypecaller"
@@ -54,7 +54,7 @@ generate_reports: true
 # Note the path: S288C_reference/, NOT the S288C_reference_test/ subset.
 # (Until 2026-08-04 omitting this aborted the DAG and reported a bogus samplesheet error;
 #  see docs/dev-practices/troubleshooting.md.)
-report_gff3: "az://aletest/ottilie/v1/S288C_reference/S288C_R64.gff3"
+report_gff3: "az://aletest/ottilie/v2/S288C_reference/S288C_R64.gff3"
 
 # Performance
 split_fastq: 0

@@ -102,8 +102,8 @@ unaffected. Measured and fixed 2026-11-02 (`docs/dev-practices/genbank_reference
 `tests/snpeff_codon_table.nf.test`, CHANGELOG *Fixed*). Published numbers: none change. The one
 mitochondrial site in the pilot results, `Mito:53278` (`pilot_results_v3/`, intergenic, undetected),
 carries no coding annotation, and the SV and CNV benchmarks do not use snpEff. A run on the `ottilie/v1`
-blob caches (`ottilie_pilot_az`, `ottilie_test_az`, the Launchpad entry) keeps the old behaviour until
-the `v2` package (`docs/dev-practices/genbank_reference_input.md` §7); re-annotating an old VCF with the fixed cache changes
+blob caches (the `v1.1.0` tag and its Launchpad version; `ottilie_pilot_az` and `ottilie_test_az` until 2026-11-11)
+keeps the old behaviour; `ottilie/v2` carries the line (`docs/dev-practices/genbank_reference_input.md` §7); re-annotating an old VCF with the fixed cache changes
 only its Mito rows.
 
 ## Results directories

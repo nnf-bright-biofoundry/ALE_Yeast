@@ -1,5 +1,5 @@
 #!/bin/bash
-# Ottilie test: 2 samples (NODRUG-GM2 + CBR110-15-R3a), 4 chromosomes (I, IV, VII, XV)
+# Ottilie test: 2 samples (NODRUG-GM2 + CBR110-15-R3a), chromosomes I, IV, VII, XV + Mito
 # Uses the ottilie_test profile (conf/test/ottilie_test.config)
 # Truth variants: 4 SNVs + chr I whole-chromosome duplication in CBR110-15-R3a
 # Source: Ottilie et al., Commun Biol 5:128 (2022)

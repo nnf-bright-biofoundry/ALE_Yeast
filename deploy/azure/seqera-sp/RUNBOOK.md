@@ -1958,3 +1958,29 @@ gene-model differences accepted when the contract test moved route.
 
 **Cloud reproduces local on the GenBank route, and the pinned version reproduces v1.1.0's own
 contract-test result; the new form and both versions work.**
+
+### 2026-11-11 (afternoon): ✅ test data `ottilie/v2` uploaded to both accounts; `ottilie/v1` untouched; ⚠️ the entry's box is NOT updated yet
+
+Operator: zhlia@dtu.dk (user credential, `--auth-mode login` on `aledata`; shared key on
+`aletestdatapublic`). Three scripts, each on its default prefix `ottilie/v2` (they refuse `ottilie/v1`
+since this change):
+
+| Script | Target | Result |
+|---|---|---|
+| `publish_test_data.sh` | `aletestdatapublic` / `releases/ottilie/v2/` | 64 blobs; the 15 public GETs it checks OK; the 51 `files/**` entries of the published `SHA256SUMS` match the local files; bundle 325 MB |
+| `08_upload_test_data.sh` | `az://aletest/ottilie/v2/` | `S288C_reference_test/`, `fastq_test/` (4 FASTQs, `CUT_PARAMETERS.tsv`, `TRUTH_GATE.txt`), the GFF3, `samplesheet_test_az.csv`; FASTQ and GenBank size + content MD5 equal the local files |
+| `upload_pilot_data.sh` | `az://aletest/ottilie/v2/` | the 8 pilot FASTQs (sizes verified by the script), the full reference (27 blobs with the GFF3), `samplesheet_pilot_az.csv` |
+
+Private `ottilie/v2/`: 59 blobs. Both snpEff databases on both accounts carry
+`R64-1-1.105.Mito.codonTable : Yeast_Mitochondrial` (read back from the public copy).
+**`ottilie/v1/` before and after:** 56 private blobs (newest 2026-08-12), 61 public (newest 2026-08-26).
+
+What the data is (a new cut: SRA reads, five contigs, 0.67 of the pairs; truth gate passed before the
+upload): `docs/benchmarking/ottilie_xenobiotic_ale/DATA_PROVENANCE.md`.
+
+**Not done, in this order, each the user's:** (1) push the commit that moves the pins; (2) right after
+it `./14_register_pipeline.sh --update` (the regenerated box names `ottilie/v2`; until then the entry
+reads `ottilie/v1` with the box of 2026-11-11 morning, which still works because `v1` is untouched and
+`main` on GitHub still names it); (3) the acceptance run from the entry on `v2`; (4) re-upload
+`ottilie/README.md` from `blob_layout.md` (it overwrites the note outside both prefixes).
+The pinned version `yAMP-prebuilt-inputs-v1.1.0` needs nothing: its box and its code name `ottilie/v1`.

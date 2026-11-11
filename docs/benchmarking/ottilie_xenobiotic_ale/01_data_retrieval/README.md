@@ -53,7 +53,8 @@ machine, and stages the full-depth 4-sample pilot set for Azure Batch.
 
 | Script | What it does | Key inputs / outputs |
 |---|---|---|
-| `generate_test_data.sh` | Generate the minimal test set: extract chr I/IV/VII/XV reads from 2 pilot samples + slim the S288C reference (`--from-cram` fast path or `--from-sra` fully reproducible) | pilot CRAMs or SRA → `data/ottilie/fastq_test/`, `S288C_reference_test/` |
+| `generate_test_data.sh` | Generate the test set (v2): align the 2 samples' SRA FASTQs, keep the pairs on chr I/IV/VII/XV/Mito, keep a seeded fraction of them, slim the S288C reference to the same contigs. `--align-only` prints the depth per contig; `OUT_ROOT`, `SEED`, `FRACTION_*` cut a candidate | `data/ottilie/fastq/SRR…` → `data/ottilie/fastq_test/` (+ `CUT_PARAMETERS.tsv`), `S288C_reference_test/`, `samplesheet_test.csv` |
+| `check_test_data_truth.py` | The truth gate: on a pipeline run of the cut, checks the read counts, the 4 SNVs, the chr I gain, the SV floor (`test_set_sv_floor.tsv`) and the Mito manifest row, then stamps `fastq_test/TRUTH_GATE.txt`. The upload scripts refuse an unstamped cut | pipeline outdir → `TRUTH_GATE.txt` |
 | `publish_test_data.sh` | Publish the test data to the public blob in both shapes: one atomic bundle tarball + individual `files/**` tree, with `SHA256SUMS`, blob samplesheet, README, the pilot recipe (`download_pilot_fastq.sh`), `pilot_truth_set.csv` and `sample_name_dictionary.csv`. `DRY_RUN=1` builds and verifies locally without uploading | `data/ottilie/` → `aletestdatapublic/releases` (PUBLIC, no SAS) |
 | `bundle_README.md` | Canonical copy of the README shipped inside `ottilie_test_data.tar.gz` — edit here, then re-run `publish_test_data.sh` | — |
 | `download_test_data.sh` | Fetch the published bundle from the stable public URL (curl + tar, no credentials) and write the machine-correct samplesheet | public blob → `data/ottilie/` |

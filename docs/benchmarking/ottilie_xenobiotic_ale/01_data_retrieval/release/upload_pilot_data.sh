@@ -41,7 +41,10 @@ SRC="$REPO_ROOT/data/ottilie"
 
 ACCOUNT="${ACCOUNT:-aledata}"
 CONTAINER="${CONTAINER:-aletest}"
-PREFIX="${PREFIX:-ottilie/v1}"
+PREFIX="${PREFIX:-ottilie/v2}"
+[[ "$PREFIX" != "ottilie/v1" ]] || {
+    echo "ERROR: ottilie/v1 is frozen (the v1.1.0 tag and its Launchpad version read it). Use ottilie/v2 or later." >&2
+    exit 1; }
 AUTH="${AUTH:-login}"
 DRY_RUN="${DRY_RUN:-}"
 
