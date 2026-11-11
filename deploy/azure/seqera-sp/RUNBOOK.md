@@ -1854,3 +1854,41 @@ limit. The user chose public access as the lowest-maintenance option.
   evening and renders normally with no GitHub credential in the workspace (anonymous GitHub API).
   Nothing of the transfer is pending on the Platform side.
 
+
+### 2026-11-11: ✅ the `yAMP` entry's reference is one GenBank: box updated in place right after the push (version `yAMP-ottilie-test-az-5`); not launched yet
+
+Commit `70aaf8b` moved the `ottilie_test_az` profile from the pre-built reference files to `genbank`
+(the 4-chromosome test GenBank, already on the container under `ottilie/v1`: same size and content MD5
+as the local file, read with `az storage blob show`). The entry's parameters box had to follow.
+
+- **Order: push first, then the box, with nothing launched in between.** The entry runs `origin/main`.
+  A box that still names `fasta`, `snpeff_cache` and `report_gff3` next to the new profile's `genbank`
+  stops at start-up (`[yAMP preflight] --genbank together with --fasta, …`), and so does the new box
+  next to the old profile. Neither order avoids the window; keeping it to seconds is the only fix.
+  Pushed by the user, then `DRY_RUN=1 ./14_register_pipeline.sh --update` (five key changes listed),
+  then the same without `DRY_RUN`: HTTP 200, pipeline id `166797736834160` unchanged.
+- **Box changes:** `fasta`, `snpeff_cache`, `snpeff_db`, `report_gff3` removed; `genbank:
+  az://aletest/ottilie/v1/S288C_reference_test/S288C_R64_test.gb` added. Everything else as it was
+  (`qc_only: true`, the disposable `outdir`, tools, joint calling).
+- **Read back** (the script's checks, and `GET /pipelines/<id>/launch` with and without the version
+  id): profiles `docker,ottilie_test_az`, revision `main`, Nextflow `25.10.4`, compute environment
+  `yAMP-ce-nofusion-256`, exactly one reference route in the box. Platform version
+  `yAMP-ottilie-test-az-5` (`6pVfoRh2e4s1Ri4WoKxmea`), created 10:02 UTC, is the default.
+  The script's check changed with this commit: it asked for `snpeff_cache` in the box and now asks
+  for exactly one reference route (`genbank`, or `fasta` with `snpeff_cache`).
+- **What the launch form shows** (opened by the user the same day): the four pre-built reference
+  fields are still drawn, because the form takes its fields from `nextflow_schema.json`, where they
+  are visible and `genbank` is hidden. They are empty (no schema default, no box value); `genbank`
+  appears with its path once hidden parameters are shown. ⚠️ Until the schema makes `genbank` the
+  visible field, do not fill any of the four when launching from this entry: a value there next to
+  the box's `genbank` stops the run at start-up.
+- **Not done: a launch.** `ottilie_test_az` on the GenBank route has not run on Azure Batch or on
+  Platform. Evidence so far is local: the contract test on this route, and `bin/test_ottilie_blob.sh`
+  with every input streamed from the public blob (157 tasks, cohort VCF records and report CSVs
+  identical to the contract test's). The first cloud run is planned with the launch-form change, so
+  one run covers both. Until then, treat the entry as consistent but unproven.
+- Older versions of the entry keep their own boxes (`yAMP-ottilie-test-az-4` and earlier name the
+  pre-built files), but a Platform version stores the revision *name*, not the code: launched today
+  they would run `main` with the new profile and stop on the two-routes error (inferred from the
+  profile and those boxes, not launched). The pre-built route
+  from Platform needs a version pinned to the tag `v1.1.0` (planned with the launch-form change).
