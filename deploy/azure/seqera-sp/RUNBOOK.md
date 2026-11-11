@@ -1892,3 +1892,60 @@ as the local file, read with `az storage blob show`). The entry's parameters box
   they would run `main` with the new profile and stop on the two-routes error (inferred from the
   profile and those boxes, not launched). The pre-built route
   from Platform needs a version pinned to the tag `v1.1.0` (planned with the launch-form change).
+
+### 2026-11-11 (later): ✅ the launch form asks for one GenBank; the pre-built route is a version pinned to `v1.1.0`; first cloud runs of the GenBank route (`5pNPCvH1EoYg3N` → `50ckv1YgDPAwMr`), identical to the local contract test
+
+**Form.** Commit `25f0b5d` (pushed by the user): `genbank` is the only visible field of *Reference
+genome options*; `fasta`, `snpeff_cache`, `snpeff_db`, `report_gff3` hidden. Platform served the new
+schema right after the push (`GET /pipelines/<id>/schema`); no box change was needed, the default
+version's box already named `genbank`. Seen in the browser by the user: the default form shows only
+`genbank`, filled.
+
+**Versions of the entry `yAMP`** (id `166797736834160` unchanged), via `18_add_tag_version.sh`:
+
+| Version | Revision | Box | Use |
+|---|---|---|---|
+| `yAMP-ottilie-test-az-5` (default) | `main` | `genbank` | every launch from now on |
+| `yAMP-prebuilt-inputs-v1.1.0` (`2fBywo3HujA4ptAIxNP0Mw`) | tag `v1.1.0` | the box committed at the tag (`fasta`, `snpeff_cache`, `snpeff_db`, `report_gff3`) | the pre-built route, frozen; no later fixes |
+| `-1` to `-4` | `main` | pre-built files | stop at start-up on "both routes" (inferred, not launched); left as they are (user decision) |
+
+Picking `yAMP-prebuilt-inputs-v1.1.0` in the form shows the four pre-built fields, visible and filled
+(seen by the user). Entry description, set in the same PUT: "yAMP. Default: main, reference as one
+GenBank. Version yAMP-prebuilt-inputs-v1.1.0: tag v1.1.0, pre-built reference files, gets no later fixes."
+
+⚠️ **Two slips with `tw pipelines versions manage` (0.38.0), both repaired the same day.** It always sends
+the name AND the default flag. (1) Renaming the new version while it was the default was refused, so the
+default launched the tag from 10:40:26 to 10:40:38 UTC (no launch in that window). (2) `--set-default`
+alone blanked `-5`'s name (the UI's version list no longer showed it; found by the user); renamed back
+with `--new-name … --set-default` at 11:41:26. The script now restores the default with its name, then
+renames the other version, and its readback checks both names (`azure_batch_execution.md` §14).
+
+**What a run records about its version** (UI launch `3BQUsiyt6qq4fo` by the user, CLI launch
+`5pNPCvH1EoYg3N`): the entry (`pipelineId`), never the version (no version id or name in the launch
+record, from the UI or the CLI). Which code ran = *Info* → Commit ID (a Resume shows no revision and
+pins `-r <commit>`); in the outdir, `versions.yml` → `nnf-bright-biofoundry/ALE_Yeast: v1.1.0-g25f0b5d`.
+The two usable versions differ in revision (`main` vs `v1.1.0`), so the revision tells them apart.
+
+**QC-first pair, commit `25f0b5d`, outdir `az://aletest/seqera-runs/yAMP-genbank-qc-first-20261111`:**
+- Run 1 `5pNPCvH1EoYg3N` (`15_launch_run.sh`, box as committed): submitted 11:36:50, started 11:46:37
+  (cold head pool), SUCCEEDED, **20 tasks / 17 processes** = the gate's GenBank-route allow-list incl.
+  `GENBANK_REFERENCE` + `SNPEFF_BUILD`, 10.75 min, est. $0.04. Input-check rows: both GenBank rows and
+  both build rows OK; reference preflight GFF3 OK, cache row SKIPPED. `reference/S288C_R64_test/`:
+  9 files, all byte-identical to the local contract test's except the build log (work dir, timings).
+- Run 2 `50ckv1YgDPAwMr` (`--resume`): started 12:03:32, SUCCEEDED, **157 tasks / 66 processes, 19
+  cached** (all of run 1's except `MULTIQC_READ_QC`), 24.2 min, est. $0.24.
+
+**Comparison with the local contract-test output of the same code** (e2e run of 2026-11-11 on the
+GenBank route; only schema and docs changed since), by `output_comparison.md` class:
+- Names: 897 common, 0 on one side only (beyond `pipeline_info/`, §2.7).
+- `tests/qc_gate_compare.py`: PASS; 157 snapshot files md5-identical, 42/42 VCFs record-identical.
+- All 11 tables under `mutation_reports/data/`, the 9 cohort deliverables among them: byte-identical (§1).
+- Both CRAMs: reads identical (`samtools view --no-PG`); the files differ in their headers.
+- The 429 files that differ byte-wise, each in a known class: 330 MultiQC renders/data (§2.4), 21 other
+  renders: FastQC, CNVKit PDFs, plots (§2.4), 47 `.vcf.gz`/`.tbi` (§2.1/§2.2; records identical), 8
+  igv-reports pages + index (§2.5), 4 alignment files (headers), 9 snpEff summary CSVs (the `Date` line
+  only), 7 files with the outdir path in them: `csv/`, `sv_merge_inputs/*.vcf` headers, MarkDuplicates
+  metrics headers (§2.3), 3 logs (fastp time used, the build log; §2.8).
+
+**Cloud reproduces local on the GenBank route; the new form and both versions work.** Not compared:
+the pinned version has not been launched (its revision and box are read back, its form seen).

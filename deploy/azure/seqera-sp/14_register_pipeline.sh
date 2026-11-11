@@ -73,7 +73,7 @@ COMPUTE_ENV="${SEQERA_COMPUTE_ENV:-yAMP-ce-nofusion-256}"
 WORK_DIR="${SEQERA_WORK_DIR:-az://aletest/nf-work}"
 PROFILES="${SEQERA_PROFILES:-docker,ottilie_test_az}"
 PARAMS_FILE="${PARAMS_FILE:-launchpad_params_ottilie_test_az.yml}"
-DESCRIPTION="${PIPELINE_DESCRIPTION:-yAMP, params from the ottilie_test_az profile}"
+DESCRIPTION="${PIPELINE_DESCRIPTION:-yAMP. Default: main, reference as one GenBank. Version yAMP-prebuilt-inputs-v1.1.0: tag v1.1.0, pre-built reference files, gets no later fixes.}"
 # The engine pin lives HERE, on the pipeline, since 2026-08-12 — the compute environment no longer
 # carries NXF_VER. ⚠️ 26.x cannot parse nextflow.config, so this is not cosmetic: an entry without it
 # runs on Platform's default engine. Set to empty only if you deliberately want that default.

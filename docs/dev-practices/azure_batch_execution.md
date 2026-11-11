@@ -848,6 +848,25 @@ selectable at launch with no extra registration; a citable baseline entry should
 registered pinned to the tag (route 1 above). Tracking `main` on the dev/test entry is the deliberate
 trade: always-current, never versioned.
 
+**A version pinned to a tag keeps an older release's launch form (2026-11-11).** When the GenBank
+reference became the form's only reference field, the pre-built route of `v1.1.0` stayed reachable as
+a second version of the same entry, `yAMP-prebuilt-inputs-v1.1.0`, whose revision is the tag and whose
+box is the one committed at the tag (`deploy/azure/seqera-sp/18_add_tag_version.sh`). *Measured:*
+`GET /pipelines/<id>/launch?versionId=<id>` returns revision `v1.1.0` and the pre-built box, and
+picking that version in the form shows the four pre-built fields, visible and filled (seen by the
+user): the form reads the schema of the version's own revision, which `GET /pipelines/<id>/schema`
+cannot show (§20). Learned on the way:
+
+- `PUT /pipelines/<id>` stores any change as a NEW DEFAULT version; to add a non-default one, set the
+  previous default back afterwards.
+- `tw pipelines versions manage` (0.38.0) always sends name AND default flag: `--new-name` alone means
+  "not default" (refused on the default), `--set-default` alone blanks the name (it did to `-5`,
+  restored the same day). Restore a default with both flags, then rename the other version.
+- Versions that store revision `main` together with an older box are not a way back to an older
+  release: they run today's `main` with yesterday's params. The entry's versions `-1` to `-4` name the
+  pre-built files and would stop at start-up on "both routes" (*inferred* from the profile and the
+  boxes, not launched; left as they are, user decision 2026-11-11).
+
 ---
 
 ## 15. 🚨 Platform's run status can be wrong in BOTH directions — and nothing reaps a hung head job
