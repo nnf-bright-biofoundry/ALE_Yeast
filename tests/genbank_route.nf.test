@@ -142,6 +142,25 @@ nextflow_pipeline {
         }
     }
 
+    // The schema's extension rule (lowercase only, docs/dev-practices/genbank_reference_input.md §6): an
+    // upper-case extension stops at parameter validation, before the DAG and before any file is read, so
+    // the path need not exist. Without the rule the run would go ahead with `x.GB` as the database name.
+    test("--genbank with an upper-case extension (.GB): the schema's parameter error, before any task") {
+        when {
+            params {
+                outdir  = "$outputDir"
+                genbank = "$root/data/ottilie/S288C_reference_test/S288C_R64_test.GB"
+            }
+        }
+        then {
+            assertAll(
+                { assert workflow.failed },
+                { assert workflow.trace.tasks().size() == 0 },
+                { assert workflow.stderr.any { it.contains('* --genbank (') && it.contains('does not match regular expression') && it.contains('The reference must be a GenBank file whose name ends in .gb, .gbk, .gbff or .genbank (lowercase), optionally followed by .gz.') } }
+            )
+        }
+    }
+
     test("neither --genbank nor --fasta: start-up error") {
         when {
             params {

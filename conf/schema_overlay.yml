@@ -59,11 +59,10 @@ visible:
   # per-sample split always on (every ALE config pins it true); a visible toggle only invites
   # breaking the per-sample from-joint deliverables.
   - generate_reports
-  # Reference genome (custom-genome launch surface)
-  - fasta
-  - snpeff_cache
-  - snpeff_db
-  - report_gff3
+  # Reference genome: one GenBank file (since 2026-11-11). The pre-built route (fasta, snpeff_cache,
+  # snpeff_db, report_gff3) is hidden: still settable and validated, and the launch form of the tag
+  # v1.1.0 shows it as the visible route.
+  - genbank
 
 # Launch-form section order (user review, 2026-10-05): every dataset-shaped field first (input,
 # output, reference, cache), then Main options (what the run does: `qc_only`, `tools`), then the
@@ -94,7 +93,7 @@ group_overrides:
   input_output_options:
     description: "Where the run reads its samplesheet and writes its results."
   reference_genome_options:
-    description: "Reference genome files of the run."
+    description: "The reference genome of the run, as one GenBank file."
   # Upstream calls this group "Preprocessing" — next to "Read preprocessing" that reads as a
   # duplicate. Its visible fields are all alignment-output choices (2026-09-09).
   preprocessing:
@@ -133,6 +132,9 @@ group_removals:
 
 # Parameter order inside a group (listed first, in this order; the rest follow in upstream order).
 property_order:
+  # The one visible reference field first; the hidden pre-built route follows it.
+  reference_genome_options:
+    - genbank
   # `qc_only` is a fork parameter placed in upstream's group: first, above `tools` (2026-10-05).
   main_options:
     - qc_only
@@ -169,7 +171,8 @@ property_order:
 # Merged key-by-key into the named parameter's schema entry (any group). Use for texts the
 # fork owns outright; unlisted parameters keep their upstream description/help_text.
 #
-# Azure path rule (2026-10-04): the five visible path fields carry one extra subschema under `allOf`
+# Azure path rule (2026-10-04): the path fields (input, outdir, genbank, and the hidden pre-built
+# fasta, snpeff_cache, report_gff3) carry one extra subschema under `allOf`
 # whose pattern, `^(?!az://[^/]*\.)`, fails a value whose container part holds a dot
 # (`az://<account>.<container>/...`: Data Explorer's notation, which Platform's Browse button
 # inserted unchanged until its fix of 2026-10-06 and which a copied or hand-typed path can still
@@ -191,6 +194,18 @@ property_overrides:
         errorMessage: "Azure paths read az://<container>/..., without the storage account name: remove '<account>.' (the account comes from the compute environment's credential)."
   # Same rule on the other visible path fields (see the comment above property_overrides).
   outdir:
+    allOf: *az_path_rule
+  # The reference as one GenBank file (2026-11-11). Upstream sarek has no such field; until then it was
+  # breseq's reference only, and breseq (not released) still reads it. Extension rule (user decision
+  # 2026-11-10): lowercase only, `.gz` accepted, failing at start-up. The database name is the basename
+  # without that extension and the reference/<db>/ publish glob matches it case-sensitively, so an
+  # `x.GB` would otherwise run with `x.GB` as the database name. The pattern is also the form's file
+  # browser filter (azure_batch_execution.md §20): it offers only these files.
+  genbank:
+    description: "The reference genome as one GenBank file (.gb, .gbk, .gbff or .genbank, optionally .gz). The FASTA, the snpEff database and the report's gene track are built from it."
+    help_text: "One file holds the whole genome: one record per contig. The run derives the FASTA, the snpEff database (with the genetic code of each contig, from `/transl_table`), the gene track of the reports and a contig manifest from it before alignment, and publishes them under `reference/<database name>/`. Contig names are the LOCUS names.\n\nThe extension must be lowercase: `.gb`, `.gbk`, `.gbff` or `.genbank`, optionally followed by `.gz`. The file name without that extension is the snpEff database name unless `--snpeff_db` is set.\n\nNot together with `--fasta`, `--snpeff_cache` or `--report_gff3` (the pre-built route, hidden here): the run stops at start-up when both routes are given.\n\nbreseq (`--tools breseq`, not released) reads the same file as its reference."
+    pattern: "^\\S+\\.(gb|gbk|gbff|genbank)(\\.gz)?$"
+    errorMessage: "The reference must be a GenBank file whose name ends in .gb, .gbk, .gbff or .genbank (lowercase), optionally followed by .gz."
     allOf: *az_path_rule
   fasta:
     allOf: *az_path_rule

@@ -191,7 +191,7 @@ Nextflow stops at start-up with a bare `Status code 400, InvalidResourceName` on
 that form and no longer does**: Seqera fixed the picker (Enterprise v26.2 / Cloud v27.1.0_cycle75,
 2026-10-06), so the launch-form warnings of 2026-10-02 were removed on 2026-10-28. What stays is the
 start-up rule in an `allOf` subschema (`conf/schema_overlay.yml`): a readable error for a hand-typed or
-copied account-prefixed `fasta`, `snpeff_cache` or `report_gff3`, while `input` and `outdir` still stop
+copied account-prefixed `genbank`, `fasta`, `snpeff_cache` or `report_gff3`, while `input` and `outdir` still stop
 with the bare 400. The form itself cannot carry such a rule: it checks only a field's own `pattern`,
 which is also its file browser's filter.
 [`azure_batch_execution.md` §19](docs/dev-practices/azure_batch_execution.md#19-a-path-picked-in-platforms-file-browser-stops-the-run-at-start-up-2026-10-01) ·
@@ -280,8 +280,9 @@ non-obvious rules, each learned by running it — full detail in the same doc:
   or when neither route is given. Contig names = LOCUS, everywhere. **Since 2026-11-11 the three ottilie test
   profiles (`ottilie_test`, `_ci`, `_az`) and the contract test take this route** (`genbank` = the 4-chromosome
   test GenBank, database `S288C_R64_test`; `conf/test/ottilie_common.config` names no `snpeff_db` any more);
-  `ottilie_pilot_az`, `bin/test_ottilie_azure_batch.sh` and the launch form's visible fields stay on the
-  pre-built files. The pre-built route is tested by `tests/qc_gate_prebuilt_params.yml` (the gate, or a full
+  `ottilie_pilot_az` and `bin/test_ottilie_azure_batch.sh` stay on the pre-built files. **Since 2026-11-11 the
+  launch form shows `genbank` as its only reference field** (lowercase `.gb|.gbk|.gbff|.genbank[.gz]`, else a
+  start-up error); the four pre-built fields are hidden. The pre-built route is tested by `tests/qc_gate_prebuilt_params.yml` (the gate, or a full
   run, on the files in `data/ottilie/`), `report_gff3_optional`, and two module cases that run it on the files
   the builder makes. ⚠️ The Launchpad entry's params box must be updated in the same step as the push that
   carries the `ottilie_test_az` change (`14_register_pipeline.sh --update`): a box with `fasta` next to the

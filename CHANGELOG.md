@@ -37,6 +37,15 @@
 
 ### Changed
 
+- **The launch form asks for the reference as one GenBank file (2026-11-11).** `genbank` is the first and
+  only visible field of *Reference genome options*; `fasta`, `snpeff_cache`, `snpeff_db` and `report_gff3`
+  are hidden (still settable and validated; the form of the tag `v1.1.0` shows them as the visible route).
+  The extension must be lowercase, `.gb`, `.gbk`, `.gbff` or `.genbank`, optionally `.gz`: any other name,
+  `x.GB` included, stops at parameter validation, before any task (it would otherwise have run with `x.GB`
+  as the database name). The pattern is also the form's file-browser filter, which now offers only these
+  files. An account-prefixed `az://<account>.<container>/…` value in `genbank` stops with the same readable
+  message as in the other path fields. The parameter's text no longer calls it breseq's reference only.
+  Tests: a `.GB` case in `tests/genbank_route.nf.test`.
 - **The cohort tables follow the reference's contig order; the dashboard's multi-copy rule reads the contig
   manifest (2026-11-09).** `sv_cohort_matrix_union{,_pass}.csv` and `contig_copy_number.csv` are written in the
   `.fai` order (the FASTA's, the GenBank's record order on the `--genbank` route; both scripts take `--fai`),

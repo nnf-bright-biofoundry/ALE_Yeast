@@ -1132,7 +1132,7 @@ descriptions of the *Input/output options* and *Reference genome options* sectio
 form could not do more than warn: the one schema rule it checks is also the file browser's filter,
 so a rule against the account name disables the browser for every Azure file (§20).
 
-**At start-up (since 2026-10-04).** The five path parameters carry the rule where only parameter
+**At start-up (since 2026-10-04).** The path parameters (five then, six with `genbank` since 2026-11-11) carry the rule where only parameter
 validation reads it: an `allOf` subschema with the pattern `^(?!az://[^/]*\.)` and an `errorMessage`
 (`conf/schema_overlay.yml` → `nextflow_schema.json`). A dot is not legal in an Azure container name,
 so no valid path is rejected. What the rule changes, *measured* in `-preview` start-ups under the
@@ -1142,6 +1142,7 @@ service-principal credential on 2026-10-04, on the change that introduced it:
 |---|---|
 | `fasta`, `snpeff_cache` | `* --fasta (az://aledata.aletest/…): "az://aledata.aletest/…" does not match regular expression [^(?!az://[^/]*\.)] (Azure paths read az://<container>/..., without the storage account name: remove '<account>.' from a path picked with the Browse button.)` (the message's tail reads "(the account comes from the compute environment's credential)" since 2026-10-28; the rule is unchanged) |
 | `report_gff3` | the same message under `--report_gff3`; *measured* 2026-10-05, a `-preview` start-up of the same kind (the paired start-up with the valid path passed) |
+| `genbank` | the same message under `--genbank`; *measured* 2026-11-11, a `-preview` start-up of `ottilie_test_az` under `conf/azure_batch.config` (the paired start-up with the profile's valid path passed) |
 | `input` | the bare `Status code 400, InvalidResourceName`, as before. nf-schema's samplesheet check (`SchemaEvaluator`) asks Azure whether the file exists, and the exception leaves validation before any error is listed |
 | `outdir` | the bare 400, as before. The nf-prov plugin (`ProvHelper.checkFileOverwrite`) reads the output path when the session starts, before the pipeline script |
 

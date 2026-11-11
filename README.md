@@ -217,7 +217,7 @@ Full column reference and conventions:
 
 ### Preparing a reference (GenBank, or FASTA + GFF3)
 
-**One GenBank, no preparation (since 2026-11-09).** `--genbank genome.gb` (also `.gbk`, `.gbff`, gzipped) replaces
+**One GenBank, no preparation (since 2026-11-09).** `--genbank genome.gb` (also `.gbk`, `.gbff`, `.genbank`, each optionally `.gz`; lowercase only, any other name stops at start-up) replaces
 `--fasta`, `--snpeff_cache`, `--snpeff_db` and `--report_gff3`: the pipeline derives the FASTA, the SnpEff
 database and the report's gene track from the file before alignment and publishes them under
 `reference/<db>/` (`<db>` = the file's basename). Contig names are the LOCUS names. Giving both routes is a

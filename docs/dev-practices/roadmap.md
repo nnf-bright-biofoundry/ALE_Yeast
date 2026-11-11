@@ -270,9 +270,11 @@ Full project history lives in `git log` and `CHANGELOG.md`; resolved items are s
      a case in `tests/genbank_route.nf.test`.~~ **Done 2026-11-10:** the second case of that test, a QC-only
      run with `--tools cnvkit,tiddit,manta,haplotypecaller`. Measured: the same 17 processes as with snpEff,
      both build rows OK, `reference/<db>/snpeff_cache/` published.
-  2. *With the launch form:* `--genbank` is still breseq's reference as well (three reads of `params.genbank` in
+  2. ~~*With the launch form:* `--genbank` is still breseq's reference as well (three reads of `params.genbank` in
      `workflows/sarek/main.nf`). Coherent, and breseq is not released; the schema text for `genbank` must say
-     so instead of describing it as breseq's parameter only.
+     so instead of describing it as breseq's parameter only.~~ **Done 2026-11-11:** the schema's `genbank` text
+     describes the Tier-1 reference input, and its help text ends with "breseq (`--tools breseq`, not
+     released) reads the same file as its reference" (`conf/schema_overlay.yml`).
   3. *With the user guide:* the standalone `generate_mutation_report.nf` takes the manifest from
      `reference/*/contig_manifest.csv` in the outdir but still needs `--fasta`, `--fasta_fai` and
      `--report_gff3` on the command line, also for a GenBank-route outdir, which holds the FASTA and the GFF3

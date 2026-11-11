@@ -1,6 +1,6 @@
 # Reference genome from one GenBank file: design note
 
-**Status: design agreed 2026-11-02; O.1 (the codon-table line in today's caches, §4.3) and O.2 (the two build tasks of §5.1, module-tested) done the same day; O.3, the wiring, done 2026-11-09: `--genbank` runs both tasks before alignment, fills upstream's `fasta` / `snpeff_cache` / `report_gff3` channels and `snpeff_db`, both routes at once or neither is a start-up error, `reference/<db>/` is published, the pre-built route gained the cache-vs-FASTA preflight row, the four verdict rows reach the input-checks table in a QC-only run (`tests/genbank_route.nf.test`). O.4, the output scripts, done 2026-11-09: the two cohort-table scripts take the reference's `.fai` and follow its order (the roman-numeral lists are gone), `generate_index.py` reads the manifest's `type` column for the multi-copy contigs and has no name list any more (§5.4, §5.6). O.5, the contract test, done 2026-11-11: the three ottilie test profiles give `genbank`, the e2e snapshot is re-recorded on this route (§7), the pre-built route keeps the gate, a DAG-build test and two module cases. Not yet: the launch form (§6; O.6), the user docs (O.7) and `ottilie/v2` (O.8).** Opened 2026-10-29 from a question about why
+**Status: design agreed 2026-11-02; O.1 (the codon-table line in today's caches, §4.3) and O.2 (the two build tasks of §5.1, module-tested) done the same day; O.3, the wiring, done 2026-11-09: `--genbank` runs both tasks before alignment, fills upstream's `fasta` / `snpeff_cache` / `report_gff3` channels and `snpeff_db`, both routes at once or neither is a start-up error, `reference/<db>/` is published, the pre-built route gained the cache-vs-FASTA preflight row, the four verdict rows reach the input-checks table in a QC-only run (`tests/genbank_route.nf.test`). O.4, the output scripts, done 2026-11-09: the two cohort-table scripts take the reference's `.fai` and follow its order (the roman-numeral lists are gone), `generate_index.py` reads the manifest's `type` column for the multi-copy contigs and has no name list any more (§5.4, §5.6). O.5, the contract test, done 2026-11-11: the three ottilie test profiles give `genbank`, the e2e snapshot is re-recorded on this route (§7), the pre-built route keeps the gate, a DAG-build test and two module cases. O.6, the launch form, committed 2026-11-11: `genbank` is the one visible reference field, the pre-built fields are hidden (§6). Not yet: the Platform run of O.6, the user docs (O.7) and `ottilie/v2` (O.8).** Opened 2026-10-29 from a question about why
 the pipeline takes FASTA + SnpEff cache where the legacy AMP v1 pipeline took a single GenBank; reviewed
 decision by decision on 2026-11-02 with the launch form and a future ALEdb registration in view. Every
 number here was measured with the pipeline's own snpEff image (`quay.io/biocontainers/snpeff:5.1--hdfd78af_2`)
@@ -412,10 +412,18 @@ order for the index tables is a deferred item (§8).
 
 ## 6. Launch form and the two routes
 
-- **`genbank` becomes the first and only visible field of *Reference genome options***
-  (`conf/schema_overlay.yml`: `visible`, `property_order`, a description, and a `pattern` of
-  `^\S+\.(gb|gbk|gbff)(\.gz)?$`, which is also the file browser's filter). `fasta`, `snpeff_cache`,
-  `snpeff_db` and `report_gff3` leave the allow-list: hidden, still settable and validated.
+- **`genbank` is the first and only visible field of *Reference genome options*** (since 2026-11-11;
+  `conf/schema_overlay.yml`: `visible`, `property_order`, a description, and a `pattern` of
+  `^\S+\.(gb|gbk|gbff|genbank)(\.gz)?$`, which is also the file browser's filter). `fasta`, `snpeff_cache`,
+  `snpeff_db` and `report_gff3` left the allow-list: hidden, still settable and validated.
+- **Extensions are lowercase only** (user decision 2026-11-10). The pattern is case-sensitive, so `x.GB`
+  or a `.fasta` given as `--genbank` stops at parameter validation, before any task (`tests/genbank_route.nf.test`).
+  Without the rule `x.GB` would run with `x.GB` as the database name and `reference/x.GB/`, because
+  `genbankDbName` and the publish glob are case-sensitive too and no producer writes upper-case extensions.
+- **`genbank` carries the account-prefixed `az://` rule** of the other path fields (`allOf`,
+  `azure_batch_execution.md` §19): measured in a `-preview` start-up on 2026-11-11.
+- **The pre-built route from Platform** is the launch form of the tag `v1.1.0`, a version of the same
+  Launchpad entry pinned to that tag (a Platform version stores the revision name, never the code).
 - **The pre-built route stays as code.** `fasta`, `snpeff_cache`, `snpeff_db` and the cache initialisation are
   upstream sarek; the GenBank route is an additive branch in `main.nf` that fills upstream's `fasta` and
   `snpeff_cache` channels and the `report_gff3` file from the builder. Older runs stay reproducible from their

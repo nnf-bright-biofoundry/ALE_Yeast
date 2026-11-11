@@ -77,8 +77,23 @@
             "title": "Reference genome options",
             "type": "object",
             "fa_icon": "fas fa-dna",
-            "description": "Reference genome files of the run.",
+            "description": "The reference genome of the run, as one GenBank file.",
             "properties": {
+                "genbank": {
+                    "type": "string",
+                    "format": "file-path",
+                    "fa_icon": "fas fa-dna",
+                    "description": "The reference genome as one GenBank file (.gb, .gbk, .gbff or .genbank, optionally .gz). The FASTA, the snpEff database and the report's gene track are built from it.",
+                    "help_text": "One file holds the whole genome: one record per contig. The run derives the FASTA, the snpEff database (with the genetic code of each contig, from `/transl_table`), the gene track of the reports and a contig manifest from it before alignment, and publishes them under `reference/<database name>/`. Contig names are the LOCUS names.\n\nThe extension must be lowercase: `.gb`, `.gbk`, `.gbff` or `.genbank`, optionally followed by `.gz`. The file name without that extension is the snpEff database name unless `--snpeff_db` is set.\n\nNot together with `--fasta`, `--snpeff_cache` or `--report_gff3` (the pre-built route, hidden here): the run stops at start-up when both routes are given.\n\nbreseq (`--tools breseq`, not released) reads the same file as its reference.",
+                    "pattern": "^\\S+\\.(gb|gbk|gbff|genbank)(\\.gz)?$",
+                    "errorMessage": "The reference must be a GenBank file whose name ends in .gb, .gbk, .gbff or .genbank (lowercase), optionally followed by .gz.",
+                    "allOf": [
+                        {
+                            "pattern": "^(?!az://[^/]*\\.)",
+                            "errorMessage": "Azure paths read az://<container>/..., without the storage account name: remove '<account>.' (the account comes from the compute environment's credential)."
+                        }
+                    ]
+                },
                 "genome": {
                     "type": "string",
                     "description": "Name of iGenomes reference.",
@@ -194,7 +209,8 @@
                             "pattern": "^(?!az://[^/]*\\.)",
                             "errorMessage": "Azure paths read az://<container>/..., without the storage account name: remove '<account>.' (the account comes from the compute environment's credential)."
                         }
-                    ]
+                    ],
+                    "hidden": true
                 },
                 "fasta_fai": {
                     "type": "string",
@@ -319,13 +335,15 @@
                             "pattern": "^(?!az://[^/]*\\.)",
                             "errorMessage": "Azure paths read az://<container>/..., without the storage account name: remove '<account>.' (the account comes from the compute environment's credential)."
                         }
-                    ]
+                    ],
+                    "hidden": true
                 },
                 "snpeff_db": {
                     "type": "string",
                     "fa_icon": "fas fa-database",
                     "description": "snpEff DB version.",
-                    "help_text": "This is used to specify the database to be use to annotate with.\nAlternatively databases' names can be listed with the `snpEff databases`.\n\nIf you use AWS iGenomes, this has already been set for you appropriately."
+                    "help_text": "This is used to specify the database to be use to annotate with.\nAlternatively databases' names can be listed with the `snpEff databases`.\n\nIf you use AWS iGenomes, this has already been set for you appropriately.",
+                    "hidden": true
                 },
                 "vep_cache": {
                     "type": "string",
@@ -357,14 +375,6 @@
                     "help_text": "Alternatively species listed in Ensembl Genomes caches can be used.\n\nIf you use AWS iGenomes, this has already been set for you appropriately.",
                     "hidden": true
                 },
-                "genbank": {
-                    "type": "string",
-                    "format": "file-path",
-                    "fa_icon": "fas fa-dna",
-                    "description": "Reference file for breseq (GenBank, GFF3, or FASTA format).",
-                    "help_text": "Path to a reference file used by breseq for variant calling. breseq accepts GenBank (.gb/.gbk), GFF3 (.gff3), or FASTA (.fasta) format. GenBank or GFF3 is recommended for annotation support.",
-                    "hidden": true
-                },
                 "report_gff3": {
                     "type": "string",
                     "format": "file-path",
@@ -379,7 +389,8 @@
                     ],
                     "pattern": "^\\S+\\.gff3?$",
                     "errorMessage": "The gene annotation must be an uncompressed GFF3 file whose name ends in .gff3 or .gff.",
-                    "exists": true
+                    "exists": true,
+                    "hidden": true
                 },
                 "breseq_args": {
                     "type": "string",
