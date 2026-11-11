@@ -279,11 +279,11 @@ One row per file (`*.config` and `*.yml`, path relative to `conf/`), kept equal 
 | `modules/mutation_report.config` | Process settings of the `mutation_report` subworkflow. |
 | `modules/custom_haplotypecaller_joint_filter.config` | The opt-in hard filter of the per-sample VCFs from joint calling (`vcf_filter_haplotypecaller_joint`; off in every ALE recipe since 2026-09-08). |
 | `modules/breseq.config` | breseq (Tier-2). `custom_freebayes_filter.config` / `custom_mutect2_filter.config` were removed 2026-09-09 with their subworkflows — `docs/archive/tier2/README.md`. |
-| `test/ottilie_common.config` | The shared ottilie calling recipe, included by every ottilie profile. |
-| `test/ottilie_test.config` | The release contract test: 2 samples, 4 chromosomes, local `data/ottilie/`. |
+| `test/ottilie_common.config` | The shared ottilie calling recipe, included by every ottilie profile. No reference parameter (2026-11-11: `snpeff_db` left it; the test profiles give one GenBank and the database is named after it, the pilot profile names its own). |
+| `test/ottilie_test.config` | The release contract test: 2 samples, 4 chromosomes, local `data/ottilie/`; the reference is one GenBank (`genbank`) since 2026-11-11. |
 | `test/ottilie_test_az.config` | The same test with every input on the private blob (`az://`), for Azure Batch / Seqera. |
 | `test/ottilie_test_ci.config` | The same test streamed from the public blob over https (no credentials). |
-| `test/ottilie_pilot_az.config` | The full-depth 4-sample pilot — a benchmark profile, not a contract test. |
+| `test/ottilie_pilot_az.config` | The full-depth 4-sample pilot — a benchmark profile, not a contract test. Stays on the pre-built reference files and sets `snpeff_db` itself. |
 | `azured4as.config` | The dev-VM resource profile (`-profile azureD4as`, 4 vCPU / 16 GB). |
 | `mymachine.config` | Template resource config for any other machine (copy, edit the two numbers, pass with `-c`). |
 | `azure_batch.config` | Azure Batch executor with a local head job (`-c`, deliberately not a profile). |

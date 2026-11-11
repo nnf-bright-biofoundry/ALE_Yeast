@@ -139,7 +139,7 @@ names, [`preflight_checks.md`](preflight_checks.md) → *Reference files*) · Fa
 fastp · FastQC on the fastp output · the read-QC MultiQC report · reference preparation (bwa index, `.fai`, sequence
 dictionary, intervals, the CNVKit flat reference) · the GFF3 index for the mutation report · on the
 `--genbank` route, the two tasks that derive the reference from the GenBank. On the
-ottilie test set that is 18 tasks and about five minutes (measured 2026-09-28; 20 tasks on the GenBank route).
+ottilie test set that is 20 tasks and about five minutes (the test profile gives the reference as one GenBank since 2026-11-11; 18 tasks on pre-built reference files, measured 2026-09-28).
 
 Does **not** run: alignment and everything downstream (duplicate marking, every caller, annotation,
 the mutation report). **breseq** (Tier-2, `--tools breseq --genbank …`) reads the fastp output

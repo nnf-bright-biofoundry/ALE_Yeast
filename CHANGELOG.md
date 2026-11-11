@@ -17,13 +17,14 @@
   *yAMP input checks* table: *GenBank contig identifiers*, *GenBank genetic code*, *snpEff build: protein
   check*, *snpEff build: contig names*. `--genbank` together with `--fasta`, `--snpeff_cache`,
   `--report_gff3` or `--download_cache` is a start-up error, and so is a run with neither `--genbank`
-  nor `--fasta`. The pre-built route (`fasta`, `snpeff_cache`, `snpeff_db`, `report_gff3`) is unchanged
-  and still what the contract test and every profile use; the launch form, the user guide, the output
-  scripts' contig order and the test data follow in the next packages (`docs/dev-practices/genbank_reference_input.md`,
+  nor `--fasta`. The pre-built route (`fasta`, `snpeff_cache`, `snpeff_db`, `report_gff3`) is unchanged;
+  the contract test and the ottilie test profiles moved to `--genbank` on 2026-11-11 (*Changed*, below), the
+  launch form, the user guide and the test data follow (`docs/dev-practices/genbank_reference_input.md`,
   status line). Tests: `tests/genbank_route.nf.test` (the route as a QC-only run, both start-up errors),
   a `chrM` case in `tests/genbank_reference.nf.test` and `tests/snpeff_codon_table.nf.test`;
   `tests/qc_gate.sh` adds the two reference tasks to its allow-list when run 1 took this route
-  (`QC_GATE_PARAMS_FILE=tests/qc_gate_genbank_params.yml`).
+  (through 2026-11-10 with `QC_GATE_PARAMS_FILE=tests/qc_gate_genbank_params.yml`; the profile takes this
+  route itself since 2026-11-11 and the file became `tests/qc_gate_prebuilt_params.yml`, the other route).
 - **The reference preflight compares the FASTA with the pre-built snpEff database (2026-11-09).** A second
   row of `PREFLIGHT_REFERENCE`, *snpEff cache vs FASTA contig names*: the database's chromosome names are
   read from `snpEffectPredictor.bin` and compared with the FASTA headers as snpEff looks them up. ERROR when
@@ -59,6 +60,37 @@
   unchanged (duplicate or colliding LOCUS names, reserved characters, a record without sequence). The release
   test GenBank is such a file, so a `--genbank` run of the test set now prints no `[yAMP preflight]` line.
   Tests: `tests/genbank_reference.nf.test` (the draft and the synthetic two-record file), `tests/genbank_route.nf.test`.
+- **The contract test and the ottilie test profiles take the reference as one GenBank (2026-11-11).**
+  `ottilie_test`, `ottilie_test_ci` and `ottilie_test_az` give `genbank` (the 4-chromosome test GenBank; the
+  database is named `S288C_R64_test` after it) where they gave `fasta`, `snpeff_cache` and `report_gff3`;
+  `conf/test/ottilie_common.config` no longer sets `snpeff_db`, and `ottilie_pilot_az`, which stays on the
+  pre-built full-genome files, sets it itself. Both blob accounts already held the GenBank under
+  `ottilie/v1`, identical to the local file, so no test data moved. `bin/test_ottilie_blob.sh` lost its
+  pre-launch step: the pre-built snpEff cache was the one input that could not stream from an https URL, and
+  the profile no longer uses it, so `-profile ottilie_test_ci` now starts from any machine or platform with
+  no file of ours staged first. The Launchpad parameters box in the repo
+  (`deploy/azure/seqera-sp/launchpad_params_ottilie_test_az.yml`) is regenerated with `genbank`; the entry on
+  Platform must be updated in the same step as the push (`14_register_pipeline.sh --update`), because a box
+  that still names `fasta` next to the profile's `genbank` stops at start-up; the script's post-registration
+  check now asks for exactly one reference route in the box.
+  **What moved in the contract-test snapshot**, against a run of the previous commit: 14 output names added
+  (12 under `reference/S288C_R64_test/`, plus `reports/preflight/preflight_genbank_mqc.tsv` and
+  `snpeff_build_mqc.tsv`), none removed; 157 tasks for 155; two entries added to the versions manifest; 10 new
+  content hashes (8 under `reference/`, where the build log is name-only because it prints its work directory,
+  and the 2 new input-checks tables); 20 changed hashes, all annotation or input checks: 11 files
+  (`snv_indel_sites.csv`, 12 of 100 rows; eight snpEff `genes.txt`; `preflight_reference_mqc.tsv` and the
+  MultiQC input-checks table), the cohort VCF's record hash, and eight of nine report tables (gene,
+  transcript, effect and HGVS columns only). The transcript id is a RefSeq accession on every record; the
+  first annotation names another gene or effect at 12 of 100 sites, NCBI's gene models against Ensembl's
+  (`docs/dev-practices/genbank_noncoding_models.md`). Unchanged: the 100 sites with FILTER and genotypes, the
+  four truth SNVs' gene, effect and protein change (RPO21 p.Thr1608Thr, TRR1 p.Cys305Phe, ROG1 p.Ser202Leu,
+  YRR1 p.Thr711Asn), every CN and SV cohort table. Dated row: `docs/dev-practices/output_comparison.md` §2.10.
+  **The pre-built route stays tested:** `tests/qc_gate_prebuilt_params.yml` runs the gate, or a full run, on
+  the pre-built files in `data/ottilie/`; `tests/report_gff3_optional.nf.test` builds its DAG with and without
+  a gene track; the last case of `tests/snpeff_codon_table.nf.test` and of `tests/preflight_reference.nf.test`
+  hand the builder's database, FASTA and GFF3 to the annotation module and the reference preflight the way
+  pre-built files are. New case in `tests/genbank_route.nf.test`: a QC-only run without snpEff in `--tools`
+  still builds, gates and publishes the database.
 
 ### Fixed
 

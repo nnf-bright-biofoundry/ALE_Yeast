@@ -21,8 +21,9 @@ nextflow_process {
     // + strand, no intron). Yeast_Mitochondrial: TGA>TGG, Trp56Trp, synonymous. Standard: Ter56Trp,
     // stop_lost. Fixture tests/fixtures/cox2_mito_73925.vcf.
     //
-    // Three cases: (1) the cache the pipeline ships (params.snpeff_cache of the ottilie profile,
-    // data/ottilie/), which must carry the line; (2) a committed Mito-only cache WITH the line and
+    // Three cases: (1) the pre-built cache shipped with the test data
+    // (data/ottilie/S288C_reference_test/snpeff_cache, database R64-1-1.105; the ottilie profile named
+    // it until the profile moved to --genbank), which must carry the line; (2) a committed Mito-only cache WITH the line and
     // (3) the same cache WITHOUT it, the negative control that measures what the main case is
     // sensitive to (tests/fixtures/snpeff_cache_mito/, runtime files only, 25 KB each; recipe in
     // tests/fixtures/README.md). Cases 2 and 3 need no data/ottilie/.
@@ -32,6 +33,13 @@ nextflow_process {
     // on that database. snpEff stores the contig as M (it strips a leading chr) and simplifies the
     // VCF's CHROM the same way, while the codonTable line is keyed on the LOCUS name chrM: the variant
     // must still come out synonymous, and the record keeps CHROM chrM. Measured 2026-11-09, pinned here.
+    //
+    // Case 5 (the pre-built route on the cache the builder makes): the 4-chromosome test GenBank goes
+    // through GENBANK_REFERENCE and SNPEFF_BUILD in the setup, and the database is then handed to the
+    // module the way a pre-built --snpeff_cache / --snpeff_db pair is, on the 100-record joint VCF of
+    // the test set. Every record must annotate (no ERROR_CHROMOSOME_NOT_FOUND) and the four published
+    // mutations of the evolved clone (data/ottilie/pilot_truth_set.csv) must read as published. This
+    // is what keeps reference/<db>/snpeff_cache of a GenBank run usable as a pre-built cache.
     //
     // Selector: the module runs here under its own name SNPEFF_SNPEFF, which is also the pipeline's,
     // so conf/modules/annotate.config applies (-nodownload -canon -v; ext.prefix) because the ottilie
@@ -46,14 +54,14 @@ nextflow_process {
         [ effect: ann[1], impact: ann[2], gene: ann[3], hgvs_c: ann[9], hgvs_p: ann[10] ]
     }
 
-    test("shipped cache (ottilie profile): Mito:73925 A>G is synonymous p.Trp56Trp") {
+    test("shipped pre-built cache (R64-1-1.105): Mito:73925 A>G is synonymous p.Trp56Trp") {
         when {
             params { outdir = "$outputDir" }
             process {
                 """
                 input[0] = [ [ id:'cox2', variantcaller:'haplotypecaller' ], file("${FIX}/cox2_mito_73925.vcf") ]
-                input[1] = params.snpeff_db
-                input[2] = [ [ id: params.snpeff_db ], file(params.snpeff_cache) ]
+                input[1] = 'R64-1-1.105'
+                input[2] = [ [ id:'R64-1-1.105' ], file("\$projectDir/data/ottilie/S288C_reference_test/snpeff_cache") ]
                 """
             }
         }
@@ -150,6 +158,57 @@ nextflow_process {
                 { assert a.effect == 'synonymous_variant' && a.impact == 'LOW' && a.gene == 'COX2' },
                 { assert a.hgvs_c == 'c.168A>G' && a.hgvs_p == 'p.Trp56Trp' },
                 { assert !path(vcf).text.contains('ERROR_CHROMOSOME_NOT_FOUND') },
+            )
+        }
+    }
+
+    test("pre-built route on the cache the builder makes (test GenBank): 100 records annotate, the four published mutations read as published") {
+        setup {
+            run("GENBANK_REFERENCE") {
+                script "../modules/local/genbank_reference/main.nf"
+                process {
+                    """
+                    input[0] = file("\$projectDir/data/ottilie/S288C_reference_test/S288C_R64_test.gb")
+                    input[1] = 'S288C_R64_test'
+                    """
+                }
+            }
+            run("SNPEFF_BUILD") {
+                script "../modules/local/snpeff_build/main.nf"
+                process {
+                    """
+                    input[0] = GENBANK_REFERENCE.out.snpeff_input
+                    input[1] = GENBANK_REFERENCE.out.expected_contigs
+                    """
+                }
+            }
+        }
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = [ [ id:'joint', variantcaller:'haplotypecaller' ], file("${FIX}/joint_soft_filtered.vcf.gz") ]
+                input[1] = 'S288C_R64_test'
+                input[2] = SNPEFF_BUILD.out.cache
+                """
+            }
+        }
+        then {
+            def recs = path(process.out.vcf[0][1]).text.readLines().findAll { !it.startsWith('#') }
+            // first ANN entry of the record at chrom:pos -> [effect, gene, HGVS.c, HGVS.p]
+            def ann  = { chrom, pos ->
+                def a = recs.find { it.startsWith("${chrom}\t${pos}\t") }.split('\t')[7].split(';').find { it.startsWith('ANN=') }.substring(4).split(',')[0].split('\\|', -1)
+                [ a[1], a[3], a[9], a[10] ]
+            }
+            assertAll(
+                { assert process.success },
+                { assert recs.size() == 100 },
+                { assert recs.every { it.contains('ANN=') } },
+                { assert !recs.any { it.contains('ERROR_CHROMOSOME_NOT_FOUND') } },
+                { assert ann('IV',  205738)  == [ 'synonymous_variant', 'RPO21', 'c.4824G>T', 'p.Thr1608Thr' ] },
+                { assert ann('IV',  1184212) == [ 'missense_variant',   'TRR1',  'c.914G>T',  'p.Cys305Phe'  ] },
+                { assert ann('VII', 233903)  == [ 'missense_variant',   'ROG1',  'c.605C>T',  'p.Ser202Leu'  ] },
+                { assert ann('XV',  639861)  == [ 'missense_variant',   'YRR1',  'c.2132C>A', 'p.Thr711Asn'  ] },
             )
         }
     }

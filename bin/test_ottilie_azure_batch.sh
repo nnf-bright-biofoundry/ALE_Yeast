@@ -9,8 +9,9 @@
 #
 # Inputs come from `az://`, not the public https blob, because the SnpEff cache is a
 # directory param: Nextflow's http provider cannot list a directory, but az:// stages
-# one correctly (verified — deploy/azure/seqera-sp/RUNBOOK.md). That removes the
-# untar-locally step bin/test_ottilie_blob.sh needs.
+# one correctly (verified — deploy/azure/seqera-sp/RUNBOOK.md). This launcher runs the
+# PRE-BUILT reference route (conf/params_ottilie_test_blob.yml names fasta, snpeff_cache,
+# snpeff_db and report_gff3 and no profile), which the ottilie test profiles left in 2026-11.
 #
 # Prerequisites:
 #   - test data uploaded:  deploy/azure/seqera-sp/08_upload_test_data.sh

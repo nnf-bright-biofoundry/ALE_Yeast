@@ -20,24 +20,23 @@
 # params-file value always wins over it.)
 #
 # ⚠️ RUNNING THE FULL-DEPTH PILOT FROM THIS ENTRY? Switch the profile to
-# `docker,ottilie_pilot_az` AND change every path below from S288C_reference_test/ to
-# S288C_reference/ — or give the pilot its own entry.
+# `docker,ottilie_pilot_az`, point `input` at the pilot samplesheet AND replace `genbank` below by
+# the pilot's pre-built reference (`fasta`, `snpeff_cache`, `snpeff_db`, `report_gff3` under
+# S288C_reference/, as in that profile): the two routes cannot be given together. Or give the
+# pilot its own entry.
 #
 # ⚠️ `qc_only: true` below is a default of this ENTRY, not of the pipeline. The launch form
 # opens with `qc_only` ticked (*Main options*), so the run stops after read QC. Untick it for a complete
 # run in one go. After a QC-only run: Resume it with the box unticked
 # (docs/usage/qc_first_run.md).
 
-fasta: "az://aletest/ottilie/v1/S288C_reference_test/S288C_R64_test.fa"
+genbank: "az://aletest/ottilie/v1/S288C_reference_test/S288C_R64_test.gb"
 genome: null
 igenomes_ignore: true
 input: "az://aletest/ottilie/v1/samplesheet_test_az.csv"
 joint_germline: true
-report_gff3: "az://aletest/ottilie/v1/S288C_reference/S288C_R64.gff3"
 seqera_workspace_url: "https://cloud.seqera.io/orgs/DTU-Biosustain/workspaces/RECON-ALE"
 skip_tools: "baserecalibrator"
-snpeff_cache: "az://aletest/ottilie/v1/S288C_reference_test/snpeff_cache"
-snpeff_db: "R64-1-1.105"
 split_fastq: 0
 split_haplotypecaller_joint_vcf: true
 tools: "snpeff,cnvkit,tiddit,manta,haplotypecaller"

@@ -1,0 +1,16 @@
+# The ottilie test set on the PRE-BUILT reference route (FASTA + snpEff cache + GFF3), the route
+# every ottilie test profile used until 2026-11. The profiles now give the reference as one GenBank;
+# this file clears it and names the pre-built files of the same genome that data/ottilie/ still holds.
+#
+#   QC_GATE_PARAMS_FILE=tests/qc_gate_prebuilt_params.yml tests/qc_gate.sh a      the --qc_only gate on this route
+#   nextflow run main.nf -profile ottilie_test,azureD4as,docker \
+#       -params-file tests/qc_gate_prebuilt_params.yml --outdir <dir>             a full run on this route
+#
+# The paths are repo-relative: launch from the repo root (the gate script does so itself).
+# The database is Ensembl's R64-1-1.105 (17 contigs; the test FASTA holds 4 of them) and the gene
+# track is the full-genome GFF3, exactly what the contract test ran on before it moved.
+genbank: null
+fasta: data/ottilie/S288C_reference_test/S288C_R64_test.fa
+snpeff_cache: data/ottilie/S288C_reference_test/snpeff_cache
+snpeff_db: R64-1-1.105
+report_gff3: data/ottilie/S288C_reference/S288C_R64.gff3

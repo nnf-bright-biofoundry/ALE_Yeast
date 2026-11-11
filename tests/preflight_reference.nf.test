@@ -31,8 +31,15 @@ nextflow_process {
     // needs data/ottilie/), and the 25 KB Mito-only fixture cache of the codon-table test against
     // mito.fa (OK, exact), mito_chrz.fa (WARN: chrZ not in the database), ref.fa (ERROR: no shared
     // name) and a wrong database name (ERROR: no such directory). [] skips the check (SKIPPED row).
+    //
+    // Last case (the pre-built route on the files the builder makes): the test GenBank goes through
+    // GENBANK_REFERENCE and SNPEFF_BUILD in the setup, and the FASTA, GFF3 and database they emit are
+    // handed to this task the way --fasta / --report_gff3 / --snpeff_cache / --snpeff_db are. Both
+    // rows must be OK with nothing to note: reference/<db>/ of a GenBank run is a valid set of
+    // pre-built inputs, and this script reads the builder's snpEffectPredictor.bin.
 
     def FX       = "\$projectDir/tests/fixtures/preflight_reference"
+    def OTT      = "\$projectDir/data/ottilie/S288C_reference_test"   // the pre-built files shipped with the test data
     def CACHE    = "\$projectDir/tests/fixtures/snpeff_cache_mito/with_codon_table"
     def rows     = { mqc -> path(mqc).readLines().findAll { !it.startsWith('#') } }
     def verdicts = { lines -> lines.findAll { it.contains('[yAMP preflight]') } }
@@ -132,15 +139,15 @@ nextflow_process {
         }
     }
 
-    test("shipped test cache vs the 4-chromosome test FASTA (ottilie profile): OK row noting the 13 extra contigs, nothing on the console") {
+    test("shipped pre-built test cache vs the 4-chromosome test FASTA: OK row noting the 13 extra contigs, nothing on the console") {
         when {
             params { outdir = "$outputDir" }
             process {
                 """
-                input[0] = file(params.fasta)
+                input[0] = file("$OTT/S288C_R64_test.fa")
                 input[1] = []
-                input[2] = file(params.snpeff_cache)
-                input[3] = params.snpeff_db
+                input[2] = file("$OTT/snpeff_cache")
+                input[3] = 'R64-1-1.105'
                 """
             }
         }
@@ -241,6 +248,49 @@ nextflow_process {
                 { assert process.errorReport.contains('terminated with an error exit status (65)') },
                 { assert (process.stdout + process.errorReport.readLines()).any {
                     it.contains('[yAMP preflight] ERROR snpEff cache vs FASTA contig names: no directory R64-1-1.105/ in the snpEff cache with_codon_table (--snpeff_db must name a database directory of --snpeff_cache; found: S288C_mito)') } }
+            )
+        }
+    }
+
+    test("pre-built route on the files the builder makes (test GenBank): both rows OK, nothing on the console") {
+        setup {
+            run("GENBANK_REFERENCE") {
+                script "../modules/local/genbank_reference/main.nf"
+                process {
+                    """
+                    input[0] = file("$OTT/S288C_R64_test.gb")
+                    input[1] = 'S288C_R64_test'
+                    """
+                }
+            }
+            run("SNPEFF_BUILD") {
+                script "../modules/local/snpeff_build/main.nf"
+                process {
+                    """
+                    input[0] = GENBANK_REFERENCE.out.snpeff_input
+                    input[1] = GENBANK_REFERENCE.out.expected_contigs
+                    """
+                }
+            }
+        }
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = GENBANK_REFERENCE.out.fasta
+                input[1] = GENBANK_REFERENCE.out.gff3
+                input[2] = SNPEFF_BUILD.out.cache.map { meta, cache -> cache }
+                input[3] = 'S288C_R64_test'
+                """
+            }
+        }
+        then {
+            def table = rows(process.out.mqc[0])
+            assertAll(
+                { assert process.success },
+                { assert table[1] == 'FASTA vs GFF3 contig names\tOK\tall 4 contig name(s) of S288C_R64_test.gff3 are contigs of S288C_R64_test.fa (4 contigs)' },
+                { assert table[2] == 'snpEff cache vs FASTA contig names\tOK\tall 4 contig name(s) of S288C_R64_test.fa are the chromosomes of snpEff database S288C_R64_test (4)' },
+                { assert verdicts(process.stdout) == [] },
             )
         }
     }

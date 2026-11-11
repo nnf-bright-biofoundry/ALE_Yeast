@@ -113,4 +113,5 @@ task in `modules/local/preflight_reference/` runs `bin/preflight_reference.sh` (
 `bin/genbank_to_reference.py` (`modules/local/genbank_reference/`) and `bin/snpeff_build_gates.sh`
 (`modules/local/snpeff_build/`), configured by `conf/modules/genbank_reference.config`, tests
 `tests/genbank_reference.nf.test`, `tests/snpeff_build.nf.test` and, for the whole route in a QC-only
-run, `tests/genbank_route.nf.test`.
+run, `tests/genbank_route.nf.test`; the contract test (`tests/ottilie_e2e.nf.test`) runs on this route and
+asserts the ten rows of the table.

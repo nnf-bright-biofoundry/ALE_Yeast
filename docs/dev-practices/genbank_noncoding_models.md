@@ -63,5 +63,5 @@ zcat <outdir>/reference/S288C_R64_test/snpeff_cache/S288C_R64_test/snpEffectPred
   '$1=="GENE"{gid[$2]=1} $1=="TRANSCRIPT"{pg[$3]=1} END{n=0; for(i in gid) if(!(i in pg)) n++; print n}'
 ```
 The `<outdir>` is a full run of the test set on the GenBank route:
-`nextflow run main.nf -profile ottilie_test,azureD4as,docker -params-file tests/qc_gate_genbank_params.yml --outdir <outdir>`
-from the repo root (about 10 minutes).
+`nextflow run main.nf -profile ottilie_test,azureD4as,docker --outdir <outdir>` (about 10 minutes; the profile
+gives the test GenBank since 2026-11-11, before that the run needed a params file clearing the pre-built files).

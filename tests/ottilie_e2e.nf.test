@@ -8,6 +8,11 @@ nextflow_pipeline {
     // Run with:  nf-test test -c tests/nf-test-ottilie.config tests/ottilie_e2e.nf.test
     // Profile (ottilie_test,docker) + resourceLimits come from tests/nf-test-ottilie.config.
     // Tools exercised (from ottilie_test.config): snpeff, cnvkit, tiddit, manta, haplotypecaller
+    //   + the reference given as ONE GenBank (the profile's `genbank`): GENBANK_REFERENCE and
+    //     SNPEFF_BUILD derive the FASTA, the snpEff database and the report's gene track before
+    //     alignment and publish them under reference/S288C_R64_test/. The pre-built route
+    //     (--fasta, --snpeff_cache, --snpeff_db, --report_gff3) is covered by module tests and
+    //     tests/qc_gate_prebuilt_params.yml instead.
     //   + FASTP with the default read-preprocessing recipe (trim_adapter, trim_quality_3prime tail;
     //     snapshot re-recorded 2026-09-04 when it became the default).
     //   + joint germline, split joint VCF, and the MUTATION_REPORT dashboard. The per-sample hard
@@ -128,13 +133,20 @@ nextflow_pipeline {
                 { assert alignment_qc.containsAll(read_qc) && alignment_qc.containsAll(['picard', 'samtools', 'mosdepth']) && !alignment_qc.contains('bcftools') },
                 { assert mqc_sections.containsAll(alignment_qc) && mqc_sections.containsAll(['bcftools', 'snpeff']) },
                 { assert path("$outputDir/multiqc/multiqc_report.html").text.contains('<details><summary>Show the') },
-                // one input-checks table: the reference check's two rows + the DAG-build checks' rows, all OK on the
-                // Tier-1 recipe (the cache row since 2026-11-09: 4 test chromosomes against the 17-contig cache)
-                { assert input_checks.collect { it[0] } == ['FASTA vs GFF3 contig names', 'Parameters: Tier-1 recipe',
+                // one input-checks table: the reference check's two rows, the four rows of the GenBank route's two
+                // build tasks and the DAG-build checks' rows. All OK on the Tier-1 recipe, except the pre-built
+                // cache row, SKIPPED on this route (the build's contig-name gate is that check)
+                { assert input_checks.collect { it[0] } == ['FASTA vs GFF3 contig names', 'GenBank contig identifiers',
+                                                           'GenBank genetic code', 'Parameters: Tier-1 recipe',
                                                            'Samplesheet: experiment ids', 'Samplesheet: input files listed once',
                                                            'Samplesheet: ploidy and clonal flag per experiment',
+                                                           'snpEff build: contig names', 'snpEff build: protein check',
                                                            'snpEff cache vs FASTA contig names'] },
-                { assert input_checks.every { it[1] == 'OK' } },
+                { assert input_checks.findAll { it[1] != 'OK' }.collect { it[0..1] } == [['snpEff cache vs FASTA contig names', 'SKIPPED']] },
+                // no console line from any check on the test set (its GenBank is a lab-made file, VERSION == LOCUS)
+                { assert !workflow.stdout.any { it.contains('[yAMP preflight]') } },
+                // the index page says which rule coloured the Whole chromosomes table on this reference
+                { assert path("$outputDir/mutation_reports/index.html").text.contains('every contig is coloured against 1 (the GenBank reference marks no contig as an organelle or a plasmid)') },
 
                 // Regression on task count + the software-versions manifest (Nextflow version stripped so
                 // the snapshot is portable across Nextflow releases), plus the content layers above.

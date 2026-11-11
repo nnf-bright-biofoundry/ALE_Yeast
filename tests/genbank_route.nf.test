@@ -8,21 +8,23 @@ nextflow_pipeline {
     // Run with:  nf-test test -c tests/nf-test-ottilie.config tests/genbank_route.nf.test
     //
     // The reference given as ONE GenBank (docs/dev-practices/genbank_reference_input.md §5, §6), on the
-    // ottilie test set: the profile's three pre-built reference params are cleared and the 4-chromosome
-    // test GenBank (data/ottilie/S288C_reference_test/S288C_R64_test.gb; LOCUS I, IV, VII, XV with
-    // VERSION equal to LOCUS, the renamed test subset) takes their place; snpeff_db is derived from its
-    // name. Run as a QC-only run (about 5 min): GENBANK_REFERENCE and SNPEFF_BUILD run before alignment
-    // by construction, so the QC-only run already produces reference/<db>/ and the input-checks rows,
-    // and the task list must be exactly tests/qc_gate.sh's allow-list plus the two reference tasks (the
-    // gate's own property on this route). The full run on this route is the contract test's job once
-    // it moves to the GenBank route; until then a launch from the repo root with
-    // -params-file tests/qc_gate_genbank_params.yml is the way to run it.
+    // ottilie test set, whose profile names the 4-chromosome test GenBank
+    // (data/ottilie/S288C_reference_test/S288C_R64_test.gb; LOCUS I, IV, VII, XV with VERSION equal to
+    // LOCUS, the renamed test subset); snpeff_db is derived from its name. Run as a QC-only run (about
+    // 5 min): GENBANK_REFERENCE and SNPEFF_BUILD run before alignment by construction, so the QC-only
+    // run already produces reference/<db>/ and the input-checks rows, and the task list must be exactly
+    // tests/qc_gate.sh's allow-list plus the two reference tasks (the gate's own property on this
+    // route). The full run on this route is the contract test (tests/ottilie_e2e.nf.test).
+    //
+    // A second QC-only run without snpEff in --tools (a calling-only run): the database is still built,
+    // gated and published, because the build is the check of the GenBank's gene models and the
+    // published reference/<db>/ must be complete whatever the tool list.
     //
     // Two start-up errors (validateReferenceRoute): both routes at once, and no reference at all. They
     // fire at DAG build, before any task, so the cases take seconds.
 
     def root   = System.getProperty('user.dir')
-    def GB     = "$root/data/ottilie/S288C_reference_test/S288C_R64_test.gb"
+    def PRE    = "$root/data/ottilie/S288C_reference_test"     // the pre-built files of the same genome
     def rows   = { f -> path(f).readLines().findAll { !it.startsWith('#') } }
     // every process name of nf-test's execution trace (meta/trace.csv next to the output dir), tag stripped
     def processes = { dir ->
@@ -54,11 +56,6 @@ nextflow_pipeline {
         when {
             params {
                 outdir       = "$outputDir"
-                genbank      = "$GB"
-                fasta        = null
-                snpeff_cache = null
-                snpeff_db    = null
-                report_gff3  = null
                 qc_only      = true
             }
         }
@@ -103,11 +100,38 @@ nextflow_pipeline {
         }
     }
 
-    test("--genbank together with the pre-built params (the ottilie profile's): start-up error naming them") {
+    test("QC-only run without snpEff in --tools: the database is still built, gated and published") {
         when {
             params {
                 outdir  = "$outputDir"
-                genbank = "$GB"
+                tools   = 'cnvkit,tiddit,manta,haplotypecaller'
+                qc_only = true
+            }
+        }
+        then {
+            def ref     = "$outputDir/reference/S288C_R64_test"
+            def bd_rows = rows("$outputDir/reports/preflight/snpeff_build_mqc.tsv")
+            def pf_rows = rows("$outputDir/reports/preflight/preflight_reference_mqc.tsv")
+            assertAll(
+                { assert workflow.success },
+                // the same task list as with snpEff: both reference tasks run
+                { assert processes(launchDir) == QC_ONLY_ALLOW },
+                { assert path("$ref/snpeff_cache/S288C_R64_test/snpEffectPredictor.bin").exists() },
+                { assert path("$ref/S288C_R64_test.fa").exists() && path("$ref/S288C_R64_test.gff3").exists() && path("$ref/contig_manifest.csv").exists() },
+                { assert bd_rows[1].startsWith('snpEff build: protein check\tOK\t') && bd_rows[1].contains('(Errors: 0)') },
+                { assert bd_rows[2] == 'snpEff build: contig names\tOK\t4 contig name(s) in the cache, equal to the expected list' },
+                { assert pf_rows[2].startsWith('snpEff cache vs FASTA contig names\tSKIPPED\t') },
+            )
+        }
+    }
+
+    test("--genbank (the ottilie profile's) together with the pre-built params: start-up error naming them") {
+        when {
+            params {
+                outdir       = "$outputDir"
+                fasta        = "$PRE/S288C_R64_test.fa"
+                snpeff_cache = "$PRE/snpeff_cache"
+                report_gff3  = "$root/data/ottilie/S288C_reference/S288C_R64.gff3"
             }
         }
         then {
@@ -121,10 +145,8 @@ nextflow_pipeline {
     test("neither --genbank nor --fasta: start-up error") {
         when {
             params {
-                outdir       = "$outputDir"
-                fasta        = null
-                snpeff_cache = null
-                report_gff3  = null
+                outdir  = "$outputDir"
+                genbank = null
             }
         }
         then {

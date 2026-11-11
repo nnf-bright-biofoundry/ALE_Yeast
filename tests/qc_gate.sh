@@ -13,9 +13,10 @@
 #                                           two --genbank reference tasks when the launch takes that
 #                                           route), and the completion message must name a report that
 #                                           exists and the session id to resume.
-#                                           QC_GATE_PARAMS_FILE=<file> adds -params-file to both launches
-#                                           (e.g. tests/qc_gate_genbank_params.yml: the test set on the
-#                                           --genbank route).
+#                                           The ottilie profile takes the --genbank route (20 tasks, 17
+#                                           processes). QC_GATE_PARAMS_FILE=<file> adds -params-file to
+#                                           both launches: tests/qc_gate_prebuilt_params.yml runs the
+#                                           test set on the pre-built reference files (18 tasks, 15).
 #   tests/qc_gate.sh b <reference_outdir>   part (b), about one e2e. Run 2 = the same command without
 #                                           --qc_only, with -resume <run-1 session>. Every run-1 task
 #                                           except MULTIQC_READ_QC must be CACHED, the task list must equal the
@@ -35,7 +36,7 @@ part=${1:-}
 outdir=${QC_GATE_OUTDIR:-$here/output_qc_gate}
 workdir=${QC_GATE_WORKDIR:-$here/work_qc_gate}
 profile=${QC_GATE_PROFILE:-ottilie_test,docker}
-params_file=${QC_GATE_PARAMS_FILE:-}     # optional -params-file, e.g. one that switches the profile to --genbank
+params_file=${QC_GATE_PARAMS_FILE:-}     # optional -params-file, e.g. one that switches the profile to the pre-built reference files
 launch=( nextflow run "$here/main.nf" -profile "$profile" -c "$here/tests/ottilie_nftest_resources.config"
          --outdir "$outdir" -w "$workdir" -ansi-log false )
 [ -n "$params_file" ] && launch+=( -params-file "$params_file" )

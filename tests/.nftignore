@@ -84,3 +84,8 @@ multiqc/multiqc_data/llms-full.txt
 multiqc/*-QC_multiqc_report.html
 multiqc/*-QC_multiqc_report_data/**
 multiqc/*-QC_multiqc_report_plots/**
+# The GenBank reference route's snpEff build log (reference/<db>/<db>.snpeff_build.log): snpEff's
+# verbose output names the task's work directory and prints elapsed times, so it differs between
+# two runs (measured 2026-11-10 on two runs of the test GenBank; the FASTA, GFF3, manifest and the
+# four database files next to it were identical and stay snapshotted). NAME only.
+reference/*/*.snpeff_build.log

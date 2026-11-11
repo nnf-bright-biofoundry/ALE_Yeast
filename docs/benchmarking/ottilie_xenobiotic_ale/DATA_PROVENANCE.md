@@ -171,7 +171,7 @@ The data is published in **BOTH shapes** under a **versioned prefix** so each co
 | `README.md` | **anyone handed the URL** | sample↔FASTQ↔SRA mapping, the truth set, and the reference-pairing rule. Ships inside the bundle too. Source: `01_data_retrieval/release/bundle_README.md` |
 | `ottilie_test_data.tar.gz` | **local onboarding + CI** (download-then-run) | one atomic ~399 MB bundle; [`download_test_data.sh`](01_data_retrieval/release/download_test_data.sh) uses this. Carries **both** references + `README.md` |
 | `files/**` | **Seqera/Batch** per-file URL staging | mirrors `data/ottilie/` — fastq_test, S288C_reference_test, **and the full S288C_reference** (fa, gb, gff3, chromosomes/, snpeff_cache/) |
-| `snpeff_cache.tar.gz` | Seqera + URL-streaming **fallback** | cache-only; untar → point `--snpeff_cache` at the `snpeff_cache/` dir. **Required**, not optional, for the streaming profile — see below |
+| `snpeff_cache.tar.gz` | Seqera + URL-streaming **fallback** | cache-only; untar → point `--snpeff_cache` at the `snpeff_cache/` dir. For a run on the pre-built reference files from https URLs; the streaming profile needed it until 2026-11 and now builds its database from the GenBank, see below |
 | `SHA256SUMS`, `MD5SUMS` | integrity | same file set, generated from one list; each covers the individual files **and** both tarballs → proves they don't drift |
 | `*.tar.gz.md5`, `files/fastq_test/*.fastq.gz.md5` | "did my download finish?" | per-file sidecars for the large objects. The FASTQ ones **also ship inside the bundle**, so `cd fastq_test && md5sum -c *.md5` re-verifies after extraction *and* after any later copy to cluster scratch — a root manifest cannot, once files have moved. ⚠️ Deliberately **absent inside `chromosomes/` and `snpeff_cache/`**: those stage as *directory* params, so stray files would be staged with the data |
 | `samplesheet_test_blob.csv` | Seqera + URL-streaming | samplesheet whose `fastq_1/2` are the public per-file URLs |
@@ -195,19 +195,21 @@ open by necessity. The individual `files/**` tree also backs the URL-streaming p
 bash bin/test_ottilie_blob.sh        # == -profile ottilie_test_ci,azureD4as,docker
 ```
 
-Same 2 samples / 4 chromosomes / same tools as `ottilie_test`, but `input`, `fasta`, `genbank`, and
-`report_gff3` are the public `files/**` URLs — Nextflow stages each into the task work dir, so nothing
-lands in `data/ottilie/`.
+Same 2 samples / 4 chromosomes / same tools as `ottilie_test`, but `input` and `genbank` are the public
+`files/**` URLs. Nextflow stages each into the task work dir, so nothing lands in `data/ottilie/`.
 
-**Why `snpeff_cache` is the one exception.** It is a *directory* param: the pipeline validates it with
-`file(...).isDirectory()` and stages the whole tree
+**The reference is one file since 2026-11.** The profile gives the test GenBank
+(`files/S288C_reference_test/S288C_R64_test.gb`, the same file as the local one by `SHA256SUMS`) and the
+run builds the FASTA, the snpEff database and the gene track from it, so the launcher is the launch
+command and nothing else. Re-host the whole set with `OTTILIE_BLOB_BASE=…`.
+
+**Before that, `snpeff_cache` was the one exception**, and it still is for a run on the pre-built files:
+it is a *directory* param, the pipeline validates it with `file(...).isDirectory()` and stages the whole tree
 ([`annotation_cache_initialisation/main.nf`](../../../subworkflows/local/annotation_cache_initialisation/main.nf)),
-and Nextflow's http provider has no directory listing — a blob prefix is not an object, so an https
-"directory" URL can neither be validated nor walked. (`az://` would work but needs credentials, which
-defeats the no-SAS point.) That is exactly what `snpeff_cache.tar.gz` is published for:
-`bin/test_ottilie_blob.sh` curls it, checksums it against `SHA256SUMS`, untars it into
-`.ottilie_ci_cache/snpeff_cache/` (~23 MB, gitignored, fetched once), and passes that local dir. Reuse an
-existing copy with `OTTILIE_SNPEFF_CACHE=…`; re-host the whole set with `OTTILIE_BLOB_BASE=…`.
+and Nextflow's http provider has no directory listing, so an https "directory" URL can neither be validated
+nor walked. (`az://` works but needs credentials.) `snpeff_cache.tar.gz` is published for that case: fetch it,
+check it against `SHA256SUMS`, untar it and pass the local directory as `--snpeff_cache` with
+`--snpeff_db R64-1-1.105`, `--fasta` and `--report_gff3` (and `--genbank null`, since the profile names one).
 
 `chr_dir` (Control-FREEC) is a directory param too and is set to `null` in the streaming profile —
 Control-FREEC is not in this test's `tools`, so nothing is lost. Adding it later would need the same
@@ -221,7 +223,7 @@ locally; they just live **inside the work dir** instead of `data/ottilie/`. Meas
 
 | | local `ottilie_test` | streaming `ottilie_test_ci` |
 |---|---|---|
-| persistent input data | `data/ottilie/` **402 MB** (symlinked into tasks, never copied) | `.ottilie_ci_cache/` **23 MB** (SnpEff cache only) |
+| persistent input data | `data/ottilie/` **402 MB** (symlinked into tasks, never copied) | none since 2026-11 (when measured: `.ottilie_ci_cache/` **23 MB**, the SnpEff cache) |
 | staged copies in work dir | 0 | `stage-*/` **366 MB** (4 FASTQ + FASTA + GFF3) |
 | task work dir | ~7.6 GB | ~7.6 GB |
 | published outputs | 216 MB | 216 MB |

@@ -1,7 +1,7 @@
 {
     "ottilie 2-sample: full ALE workflow + mutation report": {
         "content": [
-            155,
+            157,
             {
                 "BCFTOOLS_FILTER": {
                     "bcftools": 1.21
@@ -51,6 +51,10 @@
                     "gatk4": "4.5.0.0",
                     "samtools": "1.19.2"
                 },
+                "GENBANK_REFERENCE": {
+                    "python": "3.12.0",
+                    "biopython": 1.81
+                },
                 "MANTA_GERMLINE": {
                     "manta": "1.6.0"
                 },
@@ -62,6 +66,9 @@
                 },
                 "SAMTOOLS_STATS": {
                     "samtools": 1.21
+                },
+                "SNPEFF_BUILD": {
+                    "snpeff": "5.1d"
                 },
                 "SNPEFF_SNPEFF": {
                     "snpeff": "5.1d"
@@ -869,6 +876,18 @@
                 "preprocessing/markduplicates/NODRUG-GM2/NODRUG-GM2.md.cram",
                 "preprocessing/markduplicates/NODRUG-GM2/NODRUG-GM2.md.cram.crai",
                 "reference",
+                "reference/S288C_R64_test",
+                "reference/S288C_R64_test/S288C_R64_test.fa",
+                "reference/S288C_R64_test/S288C_R64_test.gb",
+                "reference/S288C_R64_test/S288C_R64_test.gff3",
+                "reference/S288C_R64_test/S288C_R64_test.snpeff_build.log",
+                "reference/S288C_R64_test/contig_manifest.csv",
+                "reference/S288C_R64_test/snpeff_cache",
+                "reference/S288C_R64_test/snpeff_cache/S288C_R64_test",
+                "reference/S288C_R64_test/snpeff_cache/S288C_R64_test/sequence.IV.bin",
+                "reference/S288C_R64_test/snpeff_cache/S288C_R64_test/sequence.bin",
+                "reference/S288C_R64_test/snpeff_cache/S288C_R64_test/snpEff.config",
+                "reference/S288C_R64_test/snpeff_cache/S288C_R64_test/snpEffectPredictor.bin",
                 "reference/dict",
                 "reference/fai",
                 "reports",
@@ -944,8 +963,10 @@
                 "reports/mosdepth/NODRUG-GM2/NODRUG-GM2.md.regions.bed.gz",
                 "reports/mosdepth/NODRUG-GM2/NODRUG-GM2.md.regions.bed.gz.csi",
                 "reports/preflight",
+                "reports/preflight/preflight_genbank_mqc.tsv",
                 "reports/preflight/preflight_reference_mqc.tsv",
                 "reports/preflight/preflight_samplesheet_params_mqc.tsv",
+                "reports/preflight/snpeff_build_mqc.tsv",
                 "reports/samtools",
                 "reports/samtools/CBR110-15-R3a",
                 "reports/samtools/CBR110-15-R3a/CBR110-15-R3a.md.cram.stats",
@@ -1158,7 +1179,7 @@
                 "multiqc_fastqc_fastqc_raw.txt:md5,791e74343f22535c6893cfe344a6fd8b",
                 "multiqc_fastqc_fastqc_trimmed.txt:md5,cdff9595a55f749c1869f45cfd2cae18",
                 "multiqc_samtools_stats.txt:md5,2ac7fac2d03a8f9f2d7a923302307e47",
-                "multiqc_yamp_input_checks_table.txt:md5,e67284bd28e0fe1ea81f3292ba333b0f",
+                "multiqc_yamp_input_checks_table.txt:md5,c4e2dadb708170ea13bd5de6d1c05adb",
                 "picard_MarkIlluminaAdapters_histogram.txt:md5,d41d8cd98f00b204e9800998ecf8427e",
                 "picard_MeanQualityByCycle_histogram.txt:md5,d41d8cd98f00b204e9800998ecf8427e",
                 "picard_MeanQualityByCycle_histogram_1.txt:md5,d41d8cd98f00b204e9800998ecf8427e",
@@ -1179,10 +1200,18 @@
                 "cn_segments_call.csv:md5,bfeedaec6019d5ad2901db54f59a21d4",
                 "cn_segments_germline.csv:md5,efc1f5ec7a296684721b34fa29157493",
                 "contig_copy_number.csv:md5,baf51388ed158b6444b61210dc48c0ea",
-                "snv_indel_sites.csv:md5,c6b65b1cf28ec49414ee11b84c736f91",
+                "snv_indel_sites.csv:md5,7b18a7a5cfd63c67c3d41f2fbd50d279",
                 "sv_cohort_matrix_union.csv:md5,94778fb263ff9afe65b5b224beaf7772",
                 "sv_cohort_matrix_union_pass.csv:md5,64aaaf066032bea452be86cb54932128",
                 "README.md:md5,f46c725f204c3d147146b151ceea31f7",
+                "S288C_R64_test.fa:md5,b629d514e2377f3fbc702faa3779eccb",
+                "S288C_R64_test.gb:md5,2bdeadf842130ef27fd0eca860533c07",
+                "S288C_R64_test.gff3:md5,b11784deb007c69719deb31545dfdf77",
+                "contig_manifest.csv:md5,abdeb617f7088586a2f3ea99b106369a",
+                "sequence.IV.bin:md5,a332761fb964f5f8e8303311f1fca3ef",
+                "sequence.bin:md5,4ec26471915112bf03ed7a31803a1679",
+                "snpEff.config:md5,b6e89e254d7a245ff21fc0ee1634804b",
+                "snpEffectPredictor.bin:md5,5bc819e9ab1d75f012622b628aa62a13",
                 "CBR110-15-R3a.cnvcall.bcftools_stats.txt:md5,9cfb764049fcb85793f043bd51c5edaa",
                 "NODRUG-GM2.cnvcall.bcftools_stats.txt:md5,04711ca4b2d63ff56370f492f617b6fe",
                 "CBR110-15-R3a.haplotypecaller.from_joint_calling.bcftools_stats.txt:md5,7ef697370b2318b655996bf8bfbb01ef",
@@ -1200,17 +1229,19 @@
                 "NODRUG-GM2.md.mosdepth.global.dist.txt:md5,eb307df40f199fcb669645491cabc45c",
                 "NODRUG-GM2.md.mosdepth.region.dist.txt:md5,b112f543a5bcd8e94ba58b9e2bfc14b6",
                 "NODRUG-GM2.md.mosdepth.summary.txt:md5,4f36a099cc200d9c373ec300d90426c6",
-                "preflight_reference_mqc.tsv:md5,970a6b276bb3d5db2cd554d2b97e2d24",
+                "preflight_genbank_mqc.tsv:md5,90e5b2289a65acb7b907f2428d648db3",
+                "preflight_reference_mqc.tsv:md5,a15907b7b0afff18a59cb8a3d962275c",
                 "preflight_samplesheet_params_mqc.tsv:md5,615c0f7c8e42c62be90cbb30baac9e5f",
-                "CBR110-15-R3a.cnvcall_snpEff.genes.txt:md5,798cbc952fd5421b30185394159c55e7",
+                "snpeff_build_mqc.tsv:md5,0348c313e61f6c171c9dbeeea95f469b",
+                "CBR110-15-R3a.cnvcall_snpEff.genes.txt:md5,52082e842a7ef11d9d4a3ddc133949bf",
                 "NODRUG-GM2.cnvcall_snpEff.genes.txt:md5,130536bf0237d7f3f746d32aaa32840a",
-                "CBR110-15-R3a.haplotypecaller.from_joint_calling_snpEff.genes.txt:md5,efa31917e702d1c9c7ed13f53d9fdab0",
-                "NODRUG-GM2.haplotypecaller.from_joint_calling_snpEff.genes.txt:md5,21a1bc27f6b7ab335eae05fc313cc2ea",
-                "HaplotypeCaller_joint_calling_soft_filtered_snpEff.genes.txt:md5,01de06bea81e009442b7f991b1a8417a",
-                "CBR110-15-R3a.manta.diploid_sv_snpEff.genes.txt:md5,01d2cee02a1ee1f497c326037560611c",
-                "NODRUG-GM2.manta.diploid_sv_snpEff.genes.txt:md5,01d2cee02a1ee1f497c326037560611c",
-                "CBR110-15-R3a.tiddit_snpEff.genes.txt:md5,f51bd20f19d91c141892857cd953847c",
-                "NODRUG-GM2.tiddit_snpEff.genes.txt:md5,d597ab065bf641b4ba6c5e62f819be93",
+                "CBR110-15-R3a.haplotypecaller.from_joint_calling_snpEff.genes.txt:md5,7e7c1fa75fe3c24352db293934c5f524",
+                "NODRUG-GM2.haplotypecaller.from_joint_calling_snpEff.genes.txt:md5,6e5586321fac72f5059ae479ef9912c4",
+                "HaplotypeCaller_joint_calling_soft_filtered_snpEff.genes.txt:md5,2ae9ad991034e915a1bae00e2a33426a",
+                "CBR110-15-R3a.manta.diploid_sv_snpEff.genes.txt:md5,27347ef9c1bdbb3e8ee2edcdf54b32f9",
+                "NODRUG-GM2.manta.diploid_sv_snpEff.genes.txt:md5,27347ef9c1bdbb3e8ee2edcdf54b32f9",
+                "CBR110-15-R3a.tiddit_snpEff.genes.txt:md5,4176189e6e95f9dc1f7a73313e2134dc",
+                "NODRUG-GM2.tiddit_snpEff.genes.txt:md5,6b0166eb8b8f89c716eec32b953428d1",
                 "CBR110-15-R3a.cnvcall.FILTER.summary:md5,7cbcc4a429829aa50424669e7f8d6d8b",
                 "CBR110-15-R3a.cnvcall.TsTv.count:md5,fa27f678965b7cba6a92efcd039f802a",
                 "NODRUG-GM2.cnvcall.FILTER.summary:md5,1ce42d34e4ae919afb519efc99146423",
@@ -1255,22 +1286,22 @@
                 "NODRUG-GM2.tiddit.ploidies.tab:md5,00ebd35db25a2a32a989f8cef73bccfc"
             ],
             {
-                "cohort_report.html": "7eea70463233fbe0ec21ece8571f8f05",
-                "samples/CBR110-15-R3a_cnvkit_report.html": "8035bea4487caa03a220ca7d1f527a6d",
-                "samples/CBR110-15-R3a_hc_report.html": "e815aeeed0936fb999654619f4665268",
-                "samples/CBR110-15-R3a_manta_report.html": "ad2f6ed90761be2dd714aef8e847ea20",
-                "samples/CBR110-15-R3a_tiddit_report.html": "b8f3f9eca3cbb3763e41fcec46d856c9",
+                "cohort_report.html": "0b223c9216c6777b75832fa81f3ed0ce",
+                "samples/CBR110-15-R3a_cnvkit_report.html": "47dfc33bcf51928676a7454f89a0be65",
+                "samples/CBR110-15-R3a_hc_report.html": "770f12638f11e160a76b0bf7cc82f262",
+                "samples/CBR110-15-R3a_manta_report.html": "5e577d07bb594dc1bc221b959f08a345",
+                "samples/CBR110-15-R3a_tiddit_report.html": "5515570592ca491d013dd1f1d88762d3",
                 "samples/NODRUG-GM2_cnvkit_report.html": "501281d6211d3b4bd68d551ae69d9af5",
-                "samples/NODRUG-GM2_hc_report.html": "b24b64dc367a7c0578dedd73908045ba",
-                "samples/NODRUG-GM2_manta_report.html": "007c97f4845af70e6695d1f493900c2f",
-                "samples/NODRUG-GM2_tiddit_report.html": "f8b21dbecc18a98dd9cebd917d09bd33"
+                "samples/NODRUG-GM2_hc_report.html": "d17a3167c4cbe9ac7445938aba73800d",
+                "samples/NODRUG-GM2_manta_report.html": "29e76374112842c07ea65964ebc41290",
+                "samples/NODRUG-GM2_tiddit_report.html": "d5fc44caf70b78395523c05baf9d39a8"
             },
-            "c5066cac74ad13e1163c5e1f07fce3b5"
+            "73ec5f97fffef92c32c7579e69e101df"
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.10.4"
         },
-        "timestamp": "2026-11-09T22:33:15.09870256"
+        "timestamp": "2026-11-11T10:26:10.379762591"
     }
 }

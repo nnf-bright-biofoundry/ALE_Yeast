@@ -144,7 +144,7 @@ null/
 # NOTE: scope to worktrees/ only — .claude/skills/ IS tracked.
 .claude/worktrees/
 
-# Ottilie blob staging: snpeff cache untarred by bin/test_ottilie_blob.sh, and the
+# Ottilie blob staging: snpeff cache untarred by bin/test_ottilie_blob.sh until 2026-11, and the
 # publish_test_data.sh scratch dir (both transient, both re-fetchable from the blob)
 .ottilie_ci_cache/
 .ottilie_publish/

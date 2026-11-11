@@ -70,11 +70,10 @@ Results land in `output_ottilie_test/`; open `output_ottilie_test/mutation_repor
 
 > **No-download variant.** `bash bin/test_ottilie_blob.sh` (`-profile ottilie_test_ci`) runs the same
 > test with the samplesheet and every reference file read straight from the public blob URLs, so you can
-> skip the `download_test_data.sh` step above. The SnpEff cache is the one exception: it is a
-> *directory* param and cannot be streamed from an https URL, so the script fetches and untars the
-> published `snpeff_cache.tar.gz` (~10 MB download, 23 MB unpacked, once) into `.ottilie_ci_cache/`.
-> On a machine or cloud with no such pre-step (a Seqera Launchpad, AWS Batch, an HPC), put the
-> unpacked `R64-1-1.105/` directory in your own bucket and pass `--snpeff_cache <bucket path>`; see
+> skip the `download_test_data.sh` step above. The reference is one file, the test GenBank: the run
+> builds the FASTA, the snpEff database and the gene track from it, so there is no pre-launch step
+> (until 2026-11 the script first fetched and unpacked a pre-built snpEff cache). A run on pre-built
+> reference files from cloud storage is described in
 > [Running the SnpEff cache from cloud storage](#running-the-snpeff-cache-from-cloud-storage).
 >
 > This doesn't reduce disk use: Nextflow copies each remote file once into
@@ -279,10 +278,12 @@ project's own Seqera entry runs. What the directory must satisfy:
   into the form is still fine and is what the project's own entry does, since the path differs per
   dataset. Without any cache, a run with `snpeff` in `--tools` fails at launch with a clear message.
 
-For the ottilie test on your own infrastructure: download the published `snpeff_cache.tar.gz`, unpack
-it, upload the `R64-1-1.105/` directory to your bucket, then launch `-profile ottilie_test_ci` with
-`--snpeff_cache <bucket path>`. Every other input of that profile is an https URL and stages from
-anywhere; the parameter override beats the profile's local default.
+For the ottilie test on your own infrastructure: launch `-profile ottilie_test_ci` as it is. Every input
+of that profile is an https URL and stages from anywhere, the reference included: it is one GenBank file,
+and the run builds the snpEff database from it, so no cache has to be uploaded. To run the test on the
+pre-built files instead, download the published `snpeff_cache.tar.gz`, unpack it, upload the
+`R64-1-1.105/` directory to your bucket and pass `--genbank null --fasta <url> --snpeff_cache <bucket path>
+--snpeff_db R64-1-1.105` (the two reference routes cannot be given together).
 
 ## Variant calling tools
 

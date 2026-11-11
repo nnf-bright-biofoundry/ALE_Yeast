@@ -8,9 +8,14 @@ nextflow_pipeline {
     // Run with:  nf-test test -c tests/nf-test-ottilie.config tests/report_gff3_optional.nf.test
     //
     // WHAT THIS GUARDS
-    // `report_gff3` is OPTIONAL: with it unset the igv-reports still build, just without the
-    // gene-annotation track. That path is not exercised by ottilie_e2e (which sets the param),
-    // so without this test a regression would ship silently.
+    // `report_gff3` is OPTIONAL on the pre-built reference route (--fasta, --snpeff_cache): with it
+    // unset the igv-reports still build, just without the gene-annotation track. That path is not
+    // exercised by ottilie_e2e, so without this test a regression would ship silently.
+    //
+    // Both cases run on the PRE-BUILT route: the ottilie profile gives the reference as one GenBank
+    // (the gene track is then always derived from it), so each case clears `genbank` and names the
+    // pre-built files of the same genome in data/ottilie/. They are also the DAG-build test of that
+    // route, which the contract test no longer takes.
     //
     // WHY -preview IS ENOUGH
     // The failure mode is at DAG-CONSTRUCTION time, not task time: `file(params.report_gff3)`
@@ -26,8 +31,8 @@ nextflow_pipeline {
     // saw — not what this test meant to send.
     //
     // Asserting on this is the point, not decoration. `workflow.success` alone would make the
-    // second case a silent no-op under either of two failure modes: a dropped param would fall
-    // back to the ottilie_test profile's real GFF3, and `--report_gff3 null` on a command line
+    // second case a silent no-op under either of two failure modes: a dropped param would leave
+    // the run on the profile's GenBank route, which always has a gene track, and `--report_gff3 null` on a command line
     // yields the STRING "null" (truthy — see docs/dev-practices/troubleshooting.md). Both would
     // pass while testing the opposite path. (Note `workflow.stdout` is NOT usable here: log.warn
     // goes to .nextflow.log, and nf-test leaves workflow.stdout empty.)
@@ -37,37 +42,50 @@ nextflow_pipeline {
         new groovy.json.JsonSlurper().parse(f)
     }
 
-    test("report_gff3 set — the production configuration") {
+    def root = System.getProperty('user.dir')
+    def PRE  = "$root/data/ottilie/S288C_reference_test"
+
+    test("pre-built route, report_gff3 set") {
 
         when {
             params {
                 outdir           = "$outputDir"
                 generate_reports = true
+                genbank          = null
+                fasta            = "$PRE/S288C_R64_test.fa"
+                snpeff_cache     = "$PRE/snpeff_cache"
+                snpeff_db        = 'R64-1-1.105'
+                report_gff3      = "$root/data/ottilie/S288C_reference/S288C_R64.gff3"
             }
         }
 
         then {
+            def p = resolvedParams("$outputDir")
             assertAll(
                 { assert workflow.success },
-                { assert resolvedParams("$outputDir").report_gff3 != null }
+                { assert p.genbank == null && p.fasta != null && p.report_gff3 != null }
             )
         }
     }
 
-    test("report_gff3 unset — reports build without the gene track") {
+    test("pre-built route, report_gff3 unset — reports build without the gene track") {
 
         when {
             params {
                 outdir           = "$outputDir"
                 generate_reports = true
-                report_gff3      = null
+                genbank          = null
+                fasta            = "$PRE/S288C_R64_test.fa"
+                snpeff_cache     = "$PRE/snpeff_cache"
+                snpeff_db        = 'R64-1-1.105'
             }
         }
 
         then {
+            def p = resolvedParams("$outputDir")
             assertAll(
                 { assert workflow.success },
-                { assert resolvedParams("$outputDir").report_gff3 == null }
+                { assert p.genbank == null && p.fasta != null && p.report_gff3 == null }
             )
         }
     }

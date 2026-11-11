@@ -165,8 +165,10 @@ print(f"""# GENERATED — do not edit by hand. Regenerate with:
 # params-file value always wins over it.)
 #
 # ⚠️ RUNNING THE FULL-DEPTH PILOT FROM THIS ENTRY? Switch the profile to
-# `docker,ottilie_pilot_az` AND change every path below from S288C_reference_test/ to
-# S288C_reference/ — or give the pilot its own entry.
+# `docker,ottilie_pilot_az`, point `input` at the pilot samplesheet AND replace `genbank` below by
+# the pilot's pre-built reference (`fasta`, `snpeff_cache`, `snpeff_db`, `report_gff3` under
+# S288C_reference/, as in that profile): the two routes cannot be given together. Or give the
+# pilot its own entry.
 """ + ("""#
 # ⚠️ `qc_only: true` below is a default of this ENTRY, not of the pipeline. The launch form
 # opens with `qc_only` ticked (*Main options*), so the run stops after read QC. Untick it for a complete
@@ -377,8 +379,12 @@ print(f"pipeline id {pid}")
 chk(l.get('configProfiles') == want_profiles, f"configProfiles = {want_profiles} (got {l.get('configProfiles')})")
 box = yaml.safe_load(l.get('paramsText') or '') or {}
 chk(isinstance(box, dict) and bool(box), f"params box is a non-empty object: {box}")
-chk('snpeff_cache' in box,
-    "snpeff_cache present in the box — kept because it differs per dataset (the schema default the form used to inject is gone since 2026-09-07, §13)")
+routes = [k for k in ('genbank', 'fasta') if box.get(k)]
+chk(len(routes) == 1,
+    f"exactly one reference route in the box (got {routes or 'none'}): `genbank`, or `fasta` with `snpeff_cache`; "
+    "both together stop the run at start-up, and the profile's value never shows in the form")
+chk(bool(box.get('genbank')) or 'snpeff_cache' in box,
+    "the pre-built route carries snpeff_cache in the box (it differs per dataset; the schema has no default since 2026-09-07, §13)")
 want_qc = True if sys.argv[5] == 'true' else None
 chk(box.get('qc_only') is want_qc,
     f"qc_only in the box = {want_qc!r} (got {box.get('qc_only')!r}): the form opens with QC-first "

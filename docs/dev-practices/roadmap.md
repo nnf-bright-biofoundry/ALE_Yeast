@@ -265,9 +265,11 @@ Full project history lives in `git log` and `CHANGELOG.md`; resolved items are s
   contigs, plus one fixture case in `tests/preflight_reference.nf.test`. Not tied to a GenBank-route package.
 - **[low] GenBank route: three follow-ups from the same review, each due with the package that touches its
   file.** Whoever closes that package checks the item off here, or rewrites it if it was decided otherwise.
-  1. *With the contract test moving to the GenBank route:* `--genbank` without snpEff in `--tools` is reasoned,
+  1. ~~*With the contract test moving to the GenBank route:* `--genbank` without snpEff in `--tools` is reasoned,
      not run (the build task should still build and publish the database, and its gates still apply). Add it as
-     a case in `tests/genbank_route.nf.test`.
+     a case in `tests/genbank_route.nf.test`.~~ **Done 2026-11-10:** the second case of that test, a QC-only
+     run with `--tools cnvkit,tiddit,manta,haplotypecaller`. Measured: the same 17 processes as with snpEff,
+     both build rows OK, `reference/<db>/snpeff_cache/` published.
   2. *With the launch form:* `--genbank` is still breseq's reference as well (three reads of `params.genbank` in
      `workflows/sarek/main.nf`). Coherent, and breseq is not released; the schema text for `genbank` must say
      so instead of describing it as breseq's parameter only.
@@ -468,7 +470,8 @@ Full project history lives in `git log` and `CHANGELOG.md`; resolved items are s
   - **The e2e contract test runs on a schedule or on pushes to `main`**, reading the 2-sample set
     (FASTQs, reference, SnpEff cache, about 400 MB) from the public blob — `download_test_data.sh`
     (no credentials) or the streaming `ottilie_test_ci` profile via `bin/test_ottilie_blob.sh`, which
-    untars only the SnpEff cache (a directory parameter cannot come from a URL). Fits a standard
+    until 2026-11-11 untarred the SnpEff cache first (the profile now gives one GenBank and has no
+    pre-launch step). Fits a standard
     GitHub runner (the nf-test resource config caps at 4 CPUs / 14 GB; about 14 min here); too slow
     for every PR. Cache the dataset by version on the runner.
   - **Prerequisite: make the e2e's data base a parameter** (the upstream `pipelines_testdata_base_path`
@@ -603,6 +606,13 @@ read, SHA256SUMS, per-file https samplesheet). One blocker remains: `snpeff_cach
 param and Nextflow's http provider cannot stage a directory, so `ottilie_test_ci` relies on a local
 untar by `bin/test_ottilie_blob.sh`, which a Platform head job never runs (the run aborts in
 `ANNOTATION_CACHE_INITIALISATION`).
+
+**2026-11-11: the blocker is gone for the test profile.** `ottilie_test_ci` gives the reference as one GenBank
+file, which streams from its https URL like the reads, and the run builds the snpEff database itself, so the
+profile needs no pre-launch step and no bucket (measured on the dev VM: `bin/test_ottilie_blob.sh`, 157 tasks,
+9.5 min, cohort VCF records and all six report CSVs identical to the contract test's). Not yet measured: a
+launch of that profile from a workspace other than ours. The paragraphs below still describe a run on
+pre-built files, where the directory problem remains.
 
 **Current-stage workaround (no code change, documented in README "Running the SnpEff cache from cloud
 storage"):** build the cache with the module's snpEff 5.1, upload the `<snpeff_db>/` directory to your own

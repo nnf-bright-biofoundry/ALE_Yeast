@@ -1,6 +1,6 @@
 # Reference genome from one GenBank file: design note
 
-**Status: design agreed 2026-11-02; O.1 (the codon-table line in today's caches, §4.3) and O.2 (the two build tasks of §5.1, module-tested) done the same day; O.3, the wiring, done 2026-11-09: `--genbank` runs both tasks before alignment, fills upstream's `fasta` / `snpeff_cache` / `report_gff3` channels and `snpeff_db`, both routes at once or neither is a start-up error, `reference/<db>/` is published, the pre-built route gained the cache-vs-FASTA preflight row, the four verdict rows reach the input-checks table in a QC-only run (`tests/genbank_route.nf.test`). O.4, the output scripts, done 2026-11-09: the two cohort-table scripts take the reference's `.fai` and follow its order (the roman-numeral lists are gone), `generate_index.py` reads the manifest's `type` column for the multi-copy contigs and has no name list any more (§5.4, §5.6). Not yet: the contract test on this route (§7; O.5), the launch form (§6; O.6), the user docs (O.7) and `ottilie/v2` (O.8).** Opened 2026-10-29 from a question about why
+**Status: design agreed 2026-11-02; O.1 (the codon-table line in today's caches, §4.3) and O.2 (the two build tasks of §5.1, module-tested) done the same day; O.3, the wiring, done 2026-11-09: `--genbank` runs both tasks before alignment, fills upstream's `fasta` / `snpeff_cache` / `report_gff3` channels and `snpeff_db`, both routes at once or neither is a start-up error, `reference/<db>/` is published, the pre-built route gained the cache-vs-FASTA preflight row, the four verdict rows reach the input-checks table in a QC-only run (`tests/genbank_route.nf.test`). O.4, the output scripts, done 2026-11-09: the two cohort-table scripts take the reference's `.fai` and follow its order (the roman-numeral lists are gone), `generate_index.py` reads the manifest's `type` column for the multi-copy contigs and has no name list any more (§5.4, §5.6). O.5, the contract test, done 2026-11-11: the three ottilie test profiles give `genbank`, the e2e snapshot is re-recorded on this route (§7), the pre-built route keeps the gate, a DAG-build test and two module cases. Not yet: the launch form (§6; O.6), the user docs (O.7) and `ottilie/v2` (O.8).** Opened 2026-10-29 from a question about why
 the pipeline takes FASTA + SnpEff cache where the legacy AMP v1 pipeline took a single GenBank; reviewed
 decision by decision on 2026-11-02 with the launch form and a future ALEdb registration in view. Every
 number here was measured with the pipeline's own snpEff image (`quay.io/biocontainers/snpeff:5.1--hdfd78af_2`)
@@ -429,15 +429,28 @@ order for the index tables is a deferred item (§8).
 
 ## 7. Validation
 
-- **Contract test on the GenBank route.** `conf/test/ottilie_common.config` gains `genbank` and drops the three
-  pre-built params; `tests/ottilie_e2e.nf.test.snap` is re-recorded in the same commit with every difference
-  explained: the §2 annotation fields (RefSeq transcript ids, gene symbols, introns), the new `reference/`
-  outputs, the manifest. Contig names do **not** change: the test GenBank's LOCUS lines are already `I`, `IV`,
-  `VII`, `XV`. The `ottilie_test_ci` and `ottilie_test_az` profiles and the Launchpad box follow.
+- **Contract test on the GenBank route (done 2026-11-11).** The three test profiles (`ottilie_test`, `_ci`,
+  `_az`) give `genbank` in place of `fasta`, `snpeff_cache` and `report_gff3`, and `ottilie_common.config` no
+  longer names `snpeff_db` (the paths were always in the profiles; the pilot profile keeps the pre-built files
+  and names its database itself). `tests/ottilie_e2e.nf.test.snap` was re-recorded in the same commit. What
+  moved, measured against a run of the previous commit on the pre-built files: 14 new output names (12 under
+  `reference/S288C_R64_test/`, 2 input-checks tables), 157 tasks for 155, two new entries in the versions
+  manifest; the annotation fields of §2 (RefSeq transcript ids on all 100 cohort records, another gene model or
+  symbol in the first annotation of 12) in the cohort VCF, `snv_indel_sites.csv`, the eight snpEff `genes.txt`
+  and eight report tables; the input-checks rows. What did not: the 100 sites, their FILTER and genotypes, the
+  four truth SNVs' effect, gene and protein change, every CN and SV cohort table, every other snapshotted file.
+  No record's first annotation is an intron effect, so the introns the direct build adds (§2) are not visible in
+  the test set's outputs. Contig names do **not** change: the test GenBank's LOCUS lines are already `I`, `IV`,
+  `VII`, `XV`. Dated row: `output_comparison.md` §2.10. Both blob accounts already hold the test GenBank under
+  `ottilie/v1` (same sha256 as the local file), so the `_ci` and `_az` profiles moved without waiting for
+  `ottilie/v2`; the Launchpad entry's parameters box is regenerated in the repo and must be put into the entry
+  together with the push.
 - **Module tests**: the build with both gates on the test GenBank; the manifest and verdict row (fixtures: the
   test GenBank, a lab-style copy without VERSION, a copy with a duplicate LOCUS); the COX2 codon-table test
-  (§4.4); the pre-built route on the cache the builder produced.
-- **Gate tests**: `tests/qc_gate.sh a` (new allow-list entries), `tests/preflight_reference.nf.test`.
+  (§4.4); the pre-built route on the cache the builder produced (the last case of `tests/snpeff_codon_table.nf.test`
+  and of `tests/preflight_reference.nf.test`, 2026-11-11).
+- **Gate tests**: `tests/qc_gate.sh a` (new allow-list entries; `QC_GATE_PARAMS_FILE=tests/qc_gate_prebuilt_params.yml`
+  for the pre-built route), `tests/preflight_reference.nf.test`.
 - **Output scripts (O.4, 2026-11-09)**: `tests/build_sv_matrix.nf.test` (2 cases) and `tests/build_contig_cn.nf.test`
   (1 case) on the `contig_order/` fixtures; the e2e snapshot is unchanged because the test set's `.fai` order equals
   the old list and has no Mito. The Mito rule cannot be seen on the test set, so the evidence is the full-genome
