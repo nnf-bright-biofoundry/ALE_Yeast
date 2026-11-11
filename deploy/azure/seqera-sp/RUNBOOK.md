@@ -1947,5 +1947,14 @@ GenBank route; only schema and docs changed since), by `output_comparison.md` cl
   only), 7 files with the outdir path in them: `csv/`, `sv_merge_inputs/*.vcf` headers, MarkDuplicates
   metrics headers (§2.3), 3 logs (fastp time used, the build log; §2.8).
 
-**Cloud reproduces local on the GenBank route; the new form and both versions work.** Not compared:
-the pinned version has not been launched (its revision and box are read back, its form seen).
+**The pinned version, launched from the form by the user:** `auAWYVv6By9eB` (`suspicious_carlsson`),
+version `yAMP-prebuilt-inputs-v1.1.0`, complete run, outdir `az://aletest/seqera-runs/yAMP-out-test-v110`.
+Submitted 12:34:47, started 12:42:22, SUCCEEDED, **155 tasks, commit `62472dc` (the tag)**, 24.2 min,
+est. $0.24; `versions.yml` reads `v1.1.0-g62472dc`. Against the contract-test snapshot committed AT THE
+TAG (recomputed from the outdir with that snapshot's own `.nftignore`): tasks 155 = 155, names
+1014/1014, 147/147 file md5s, 9/9 igv-report `tableJson` md5s. Its cohort VCF against run 2's (the
+GenBank route): 100 records, sites + FILTER + GT identical, first annotation different on 12, the
+gene-model differences accepted when the contract test moved route.
+
+**Cloud reproduces local on the GenBank route, and the pinned version reproduces v1.1.0's own
+contract-test result; the new form and both versions work.**
