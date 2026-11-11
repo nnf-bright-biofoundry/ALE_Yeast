@@ -221,11 +221,13 @@ Full column reference and conventions:
 `--fasta`, `--snpeff_cache`, `--snpeff_db` and `--report_gff3`: the pipeline derives the FASTA, the SnpEff
 database and the report's gene track from the file before alignment and publishes them under
 `reference/<db>/` (`<db>` = the file's basename). Contig names are the LOCUS names. Giving both routes is a
-start-up error. Not yet in the Seqera launch form; the user guide follows
-([`docs/dev-practices/genbank_reference_input.md`](docs/dev-practices/genbank_reference_input.md)). The
-steps below prepare the files for the pre-built route.
+start-up error. It is the only reference field of the Seqera launch form (since 2026-11-11). What the file
+needs, what the run checks and publishes, and the known limits:
+[`docs/usage/prepare_reference.md`](docs/usage/prepare_reference.md).
 
-Full page, both paths, rules and known limitations: [`docs/usage/prepare_reference.md`](docs/usage/prepare_reference.md).
+**The pre-built route** (FASTA + snpEff cache + GFF3, every run before 2026-11-09) still works from the
+command line, and on Seqera as the Launchpad version pinned to `v1.1.0`. The steps below prepare its files;
+the page above has them in full in its appendix.
 
 **From GenBank.** `docs/prepare_input/process_GeneBank/process_genbank_auto.sh` converts a `.gbk`/`.gb` file into
 everything the pipeline needs: the reference FASTA (`--fasta`), the GFF3 annotations (`--report_gff3`) and a SnpEff cache
@@ -295,7 +297,7 @@ pre-built files instead, download the published `snpeff_cache.tar.gz`, unpack it
 | CNVKit | CNV | Diploid baseline | `--ploidy` not passed; use `fold_change = 2^log2`. See [`cnvkit_ploidy_behavior.md`](docs/variant-calling/cnvkit/cnvkit_ploidy_behavior.md) |
 | TIDDIT | SV | `-n` ploidy | Affects coverage normalization and DUP/DEL GT thresholds. See [`tiddit_ploidy_behavior.md`](docs/variant-calling/tiddit/tiddit_ploidy_behavior.md) |
 | Manta | SV | Diploid only | Breakpoint caller: no ploidy parameter by design; used for cross-validation |
-| SnpEff | Annotation | n/a | Custom cache built from GenBank or FASTA + GFF3 (`docs/usage/prepare_reference.md`) |
+| SnpEff | Annotation | n/a | Database built in the run from `--genbank`, or a pre-built cache (`docs/usage/prepare_reference.md`) |
 
 **Tier 2, functional but not release-validated for ALE:** Control-FREEC, breseq, Mutect2, FreeBayes,
 DeepVariant, Strelka. Enable via `--tools`; they run as in upstream sarek. The fork's former AF

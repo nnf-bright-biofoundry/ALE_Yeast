@@ -18,8 +18,8 @@
   check*, *snpEff build: contig names*. `--genbank` together with `--fasta`, `--snpeff_cache`,
   `--report_gff3` or `--download_cache` is a start-up error, and so is a run with neither `--genbank`
   nor `--fasta`. The pre-built route (`fasta`, `snpeff_cache`, `snpeff_db`, `report_gff3`) is unchanged;
-  the contract test and the ottilie test profiles moved to `--genbank` on 2026-11-11 (*Changed*, below), the
-  launch form, the user guide and the test data follow (`docs/dev-practices/genbank_reference_input.md`,
+  the contract test, the ottilie test profiles, the launch form and the user guide moved to `--genbank` on
+  2026-11-11 (*Changed*, below); the test data follows (`docs/dev-practices/genbank_reference_input.md`,
   status line). Tests: `tests/genbank_route.nf.test` (the route as a QC-only run, both start-up errors),
   a `chrM` case in `tests/genbank_reference.nf.test` and `tests/snpeff_codon_table.nf.test`;
   `tests/qc_gate.sh` adds the two reference tasks to its allow-list when run 1 took this route
@@ -37,6 +37,18 @@
 
 ### Changed
 
+- **The reference guide starts from one GenBank file (2026-11-11).** `docs/usage/prepare_reference.md` now
+  opens with `--genbank`: the file-name rule (lowercase `.gb`, `.gbk`, `.gbff`, `.genbank`, optionally
+  `.gz`; the name without it is the database name unless `--snpeff_db`), what a good file carries and what
+  each qualifier becomes (LOCUS, sequence, `/translation`, `/transl_table`, `/organelle`, `/plasmid`,
+  VERSION), the two build tasks and their checks, what `reference/<db>/` holds, the route's known limits
+  (no transcript for tRNA and ncRNA genes; the file's own gene models), and how to regenerate the reports
+  of a GenBank-route output with `generate_mutation_report.nf` (FASTA and GFF3 from `reference/<db>/`, the
+  `.fai` from `samtools faidx`; verified on a run of the test set: the same 11 cohort tables and 11 report
+  tables as the run's own). The FASTA + snpEff cache + GFF3 route and its two preparation scripts moved to
+  an appendix. The launcher's usage header gained the `--skip_tools baserecalibrator` it needs to find the
+  CRAMs. `docs/usage/preflight_checks.md` lists the five reference rows of the input-checks table; README
+  points at the guide.
 - **The launch form asks for the reference as one GenBank file (2026-11-11).** `genbank` is the first and
   only visible field of *Reference genome options*; `fasta`, `snpeff_cache`, `snpeff_db` and `report_gff3`
   are hidden (still settable and validated; the form of the tag `v1.1.0` shows them as the visible route).

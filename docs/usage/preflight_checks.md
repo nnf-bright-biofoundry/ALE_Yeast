@@ -30,11 +30,14 @@ Seqera Platform from the run's *Outputs* tab, while the run is still going.
 | `Parameters: Tier-1 recipe` | every recipe setting matches | each deviation |
 | `Parameters: --qc_only` (QC-only runs only) | the run stops after read QC | only fastp's report is produced |
 | `FASTA vs GFF3 contig names` | see *Reference files* below | never |
+| `snpEff cache vs FASTA contig names` (pre-built route) | see *Reference files* below | FASTA contigs the database lacks |
+| `GenBank contig identifiers`, `GenBank genetic code`, `snpEff build: protein check`, `snpEff build: contig names` (`--genbank` route) | see *Reference from one GenBank* below | an organelle contig without `/transl_table` (genetic code row only) |
 
 Rows are sorted by name. An ERROR row never appears: a failed check stops the run before any report
 exists, so errors are read on the console (on Seqera, in the run's error message). The same rows are
 kept in `<outdir>/reports/preflight/`: `preflight_samplesheet_params_mqc.tsv` for the start-up
-checks, `preflight_reference_mqc.tsv` for the reference task.
+checks, `preflight_reference_mqc.tsv` for the reference task, and on the GenBank route
+`preflight_genbank_mqc.tsv` and `snpeff_build_mqc.tsv` for the two build tasks.
 
 ## Errors: the run stops
 
@@ -91,7 +94,8 @@ On the GenBank route the reference files are *derived*, so the checks move to th
 the same table (`reports/preflight/preflight_genbank_mqc.tsv`, `snpeff_build_mqc.tsv`), prints WARN and ERROR
 lines with the `[yAMP preflight]` prefix, and an ERROR stops the run before any read is touched. The
 derived FASTA and GFF3 then go through the FASTA-vs-GFF3 row above like any other pair
-([`genbank_reference_input.md`](../dev-practices/genbank_reference_input.md) §5.5 for the rules in full):
+(what a file needs to pass: [`prepare_reference.md`](prepare_reference.md) → *What a good GenBank file looks like*;
+[`genbank_reference_input.md`](../dev-practices/genbank_reference_input.md) §5.5 for the rules in full):
 
 | Row | ERROR: the run stops | WARN: the run proceeds | OK |
 |---|---|---|---|

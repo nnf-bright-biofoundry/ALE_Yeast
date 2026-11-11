@@ -28,8 +28,13 @@
  *       --fasta_fai data/ottilie/S288C_reference/S288C_R64.fa.fai \
  *       --report_gff3 data/ottilie/S288C_reference/S288C_R64.gff3 \
  *       --tools haplotypecaller,cnvkit,manta,tiddit,snpeff \
+ *       --skip_tools baserecalibrator \
  *       --report_outdir docs/igvreports/ottilie \
  *       -resume
+ *
+ * --skip_tools must be the run's: it picks the CRAM folder (baserecalibrator → preprocessing/markduplicates/,
+ * every ALE run). For a --genbank output the FASTA and GFF3 are reference/<db>/<db>.fa and <db>.gff3, and the
+ * .fai is made once with `samtools faidx` (not published): docs/usage/prepare_reference.md → Regenerating the reports.
  */
 
 nextflow.enable.dsl = 2

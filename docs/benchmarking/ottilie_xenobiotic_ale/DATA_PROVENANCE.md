@@ -86,7 +86,8 @@ under control). Sample↔SRR mapping via `resolve_sra_accessions.py`. Subset var
 ### [2] Full pipeline run → CRAMs — `03_pipeline/run_ottilie_pilot.sh`
 Runs the ALE pipeline on the 4 pilot samples (`samplesheet_pilot.csv`) with `--save_mapped`,
 which publishes the aligned/dedup CRAMs. This is what produced `output_ottilie/`.
-Canonical command (from `run_ottilie_pilot.sh`):
+Canonical command, as run in 2026 (from `run_ottilie_pilot.sh` of that time; a record, not a recipe:
+since 2026-11-09 `--genbank` together with `--fasta` is a start-up error, and the script no longer passes it):
 ```bash
 nextflow run main.nf -profile azureD4as,docker \
   -w work_ottilie \
@@ -238,8 +239,8 @@ cleanup consequences, both verified:
   dir, so a fresh session in the same work dir adds another full copy rather than reusing the first.
   `bin/test_ottilie_blob.sh` always passes `-resume`; keep it if you edit the launcher.
 
-Only files a process actually consumes are fetched — e.g. `genbank` is set but breseq isn't in `tools`,
-so the `.gb` is never downloaded.
+Only files a process actually consumes are fetched. Since 2026-11-11 the `.gb` is one of them: the profile's
+reference is the test GenBank, which the two reference tasks read before alignment.
 
 ### Publish — maintainer runbook (`publish_test_data.sh`)
 

@@ -275,11 +275,16 @@ Full project history lives in `git log` and `CHANGELOG.md`; resolved items are s
      so instead of describing it as breseq's parameter only.~~ **Done 2026-11-11:** the schema's `genbank` text
      describes the Tier-1 reference input, and its help text ends with "breseq (`--tools breseq`, not
      released) reads the same file as its reference" (`conf/schema_overlay.yml`).
-  3. *With the user guide:* the standalone `generate_mutation_report.nf` takes the manifest from
+  3. ~~*With the user guide:* the standalone `generate_mutation_report.nf` takes the manifest from
      `reference/*/contig_manifest.csv` in the outdir but still needs `--fasta`, `--fasta_fai` and
      `--report_gff3` on the command line, also for a GenBank-route outdir, which holds the FASTA and the GFF3
      under `reference/<db>/` (no `.fai`). Either read them from there like the manifest, or state the command
-     in the guide.
+     in the guide.~~ **Done 2026-11-11, the guide option:** `docs/usage/prepare_reference.md` → *Regenerating
+     the reports from a finished run* states the command (FASTA and GFF3 from `reference/<db>/`, the `.fai`
+     from `samtools faidx`), and the launcher's usage header points there. Measured on the GenBank-route
+     output of `bin/test_ottilie_blob.sh`: 11/11 cohort CSVs byte-identical and 11/11 HTML `tableJson`
+     identical to the run's own reports. Reading the three from `reference/*/` in the launcher stays possible
+     but would need a faidx task; the launcher has no test, so it was not changed.
 
 - **[med] `generate_mutation_report.nf` CRAM suffixes are wrong for 2 of 3 preprocessing layouts.**
   The standalone launcher rebuilds channels by *discovering published files*, so it hard-codes the

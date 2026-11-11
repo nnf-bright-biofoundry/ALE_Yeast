@@ -286,11 +286,13 @@ non-obvious rules, each learned by running it — full detail in the same doc:
   run, on the files in `data/ottilie/`), `report_gff3_optional`, and two module cases that run it on the files
   the builder makes. ⚠️ The Launchpad entry's params box must be updated in the same step as the push that
   carries the `ottilie_test_az` change (`14_register_pipeline.sh --update`): a box with `fasta` next to the
-  profile's `genbank` stops at start-up. Design + status:
+  profile's `genbank` stops at start-up. **User page** (since 2026-11-11: what the file needs, what is checked and
+  published, limits, regenerating reports from a GenBank-route outdir with `samtools faidx` for the `.fai`):
+  [`docs/usage/prepare_reference.md`](docs/usage/prepare_reference.md). Design + status:
   [`docs/dev-practices/genbank_reference_input.md`](docs/dev-practices/genbank_reference_input.md).
 - **SnpEff cache generation (the pre-built route)**: `docs/prepare_input/process_GeneBank/process_genbank_auto.sh` (GenBank in) or
   `docs/prepare_input/build_snpeff_cache.sh` (FASTA + GFF3 in) — user page
-  [`docs/usage/prepare_reference.md`](docs/usage/prepare_reference.md). `gen_cache.sh` retired 2026-09-08
+  [`docs/usage/prepare_reference.md`](docs/usage/prepare_reference.md) → appendix. `gen_cache.sh` retired 2026-09-08
   (hard-coded dev paths). snpEff **5.1** only; flat `<db>/` layout; `snpeff_cache` has **no default**.
   The cache's `snpEff.config` carries the **genetic code per contig** (`<db>.<contig>.codonTable : <Table>`,
   read at annotation time; snpEff ignores `/transl_table`): the shipped `R64-1-1.105` caches carry
@@ -337,7 +339,7 @@ Canonical column reference, conventions, and non-Tier-1 notes:
   edge cap — the human-repeat heuristics that hide engineered multi-copy junctions and Ty/LTR
   insertions; audit + how to re-run: [`pilot_results_v2/NOTES.md`](docs/benchmarking/ottilie_xenobiotic_ale/04_validate/pilot_results_v2/NOTES.md).
   `--wes` is a pipeline-wide data-type flag (CNVKit method, mosdepth, HC GenomicsDB, Control-FREEC…) — never use it for this.
-- **Annotation — SnpEff**: custom cache built per genome ([`docs/usage/prepare_reference.md`](docs/usage/prepare_reference.md)).
+- **Annotation — SnpEff**: database built in the run from `--genbank`, or a pre-built cache ([`docs/usage/prepare_reference.md`](docs/usage/prepare_reference.md)).
 
 ### Tier-2 tools — functional, not release-validated for ALE
 
