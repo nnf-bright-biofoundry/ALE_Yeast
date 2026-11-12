@@ -73,12 +73,12 @@ CBR110-15-R3a (`data/ottilie/fastq_test/`, real Nextera adapter read-through and
 qualities), with two synthetic edits so one small pair exercises every preprocessing step: read names
 rewritten to a NovaSeq-style instrument prefix (`@A00123:…`, so fastp's read-name poly-G auto-detection
 would fire if not disabled) and a 15-base Q2 poly-G tail appended to every read. The committed pair was
-cut from the **v1** test FASTQs (`ottilie/v1`, kept locally as `data/ottilie/v1_local/fastq_test/` on the
-dev VM); the v2 files have other names and another read order, so the same recipe on them gives a
+cut from the **v1** test FASTQs (the `ottilie/v1` bundle, still published; fetch it into a scratch
+directory with `BLOB_BASE=…/ottilie/v1 OUT=<dir>` and the `download_test_data.sh` of the `v1.1.0` tag); the v2 files have other names and another read order, so the same recipe on them gives a
 different, equally usable pair. Regenerate from v1:
 
 ```bash
-D=data/ottilie/v1_local/fastq_test      # or the fastq_test/ of the ottilie/v1 bundle
+D=<dir>/fastq_test      # the fastq_test/ of the ottilie/v1 bundle
 for r in 1 2; do zcat $D/CBR110-15-R3a_chrI_IV_VII_XV_R$r.fastq.gz | head -4000 \
   | awk -v r=$r 'NR%4==1{n++; $0="@A00123:45:HXXXXDSXX:1:1101:"n":1000 "r":N:0:ACGTACGT"} NR%4==2{$0=$0"GGGGGGGGGGGGGGG"} NR%4==0{$0=$0"###############"} {print}' \
   | gzip -n > tests/fixtures/fastp_R$r.fastq.gz; done
@@ -182,7 +182,7 @@ which passes the plain FASTA). The `.dict` is the test set's with the local-path
 contig names and lengths match the VCF header, which is all VariantFiltration checks.
 
 ```bash
-R=data/ottilie/v1_local/S288C_reference_test/S288C_R64_test; D=tests/fixtures/reference   # the v1 reference
+R=<dir>/S288C_reference_test/S288C_R64_test; D=tests/fixtures/reference   # the reference of the ottilie/v1 bundle
 bgzip -c $R.fa > $D/S288C_R64_test.fa.gz
 samtools faidx $D/S288C_R64_test.fa.gz          # writes .fai and .gzi
 sed -E 's/\tUR:[^\t]*//' $R.dict > $D/S288C_R64_test.dict
