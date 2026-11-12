@@ -1984,3 +1984,31 @@ reads `ottilie/v1` with the box of 2026-11-11 morning, which still works because
 `main` on GitHub still names it); (3) the acceptance run from the entry on `v2`; (4) re-upload
 `ottilie/README.md` from `blob_layout.md` (it overwrites the note outside both prefixes).
 The pinned version `yAMP-prebuilt-inputs-v1.1.0` needs nothing: its box and its code name `ottilie/v1`.
+
+### 2026-11-12: ✅ acceptance of `ottilie/v2` on Platform: QC-first pair `48TaYZa0n3MF00` → `4ELv9VQ1yAR2QL` from the updated entry, identical to the local contract test
+
+After the push of `7658eab` (user, 2026-11-12): `./14_register_pipeline.sh --update`, HTTP 200, pipeline id
+`166797736834160` unchanged; box changes `genbank` and `input` from `ottilie/v1` to `ottilie/v2`, all
+read-back checks OK (one reference route, `qc_only` true, Nextflow 25.10.4). `ottilie/README.md` on the
+private container re-uploaded from `blob_layout.md` (7,982 bytes).
+
+Both runs from the entry `yAMP` with `15_launch_run.sh`, commit `7658eab`, compute environment
+`yAMP-ce-nofusion-256`, outdir `az://aletest/seqera-runs/yAMP-v2-accept-20261112`:
+- Run 1 `48TaYZa0n3MF00` (the box's `qc_only: true`): submitted 09:36:02 UTC, started 09:47:02, SUCCEEDED,
+  **20 tasks / 17 processes**, 10.0 min, est. $0.04.
+- Run 2 `4ELv9VQ1yAR2QL` (`--resume`): submitted 09:56:57, running 10:00, SUCCEEDED 10:16,
+  **157 tasks, 19 cached, 66 processes**, 18.2 min, est. $0.23. `versions.yml`: `v1.1.0-g7658eab`.
+
+**Comparison with the local contract-test output of the same commit** (the e2e run of 2026-11-11 on v2;
+outdir downloaded with `17_download_outdir.sh`, 908 files):
+- `tests/qc_gate_compare.py`: PASS. Names 897 common, 0 on one side only; 157 snapshot files
+  md5-identical; 42/42 VCFs record-identical.
+- All 11 tables under `mutation_reports/data/`: byte-identical.
+- Read from the outdir: ten input-check rows, nine OK and the pre-built cache row SKIPPED; the index
+  names Mito as multi-copy, graded against the cohort median; the built database's `snpEff.config`
+  carries `S288C_R64_test.Mito.codonTable : Yeast_Mitochondrial`.
+- Not compared here: CRAM reads and the byte-level classes of the other 698 files (compared on the
+  2026-11-11 pair; nothing in the recipe changed since).
+
+**Cloud reproduces local on `ottilie/v2`. This outdir is the reference for runs of `main` from now on;**
+the 2026-09-08 baseline and every other output cut on `ottilie/v1` are comparable only with `v1.1.0`.
